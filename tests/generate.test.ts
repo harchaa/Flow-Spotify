@@ -155,6 +155,34 @@ describe("generateSession", () => {
     expect(session.tracks).toHaveLength(10);
   });
 
+  it("tops up from new spares when marked discoveries fail to resolve", async () => {
+    // Both LLM-marked discoveries miss on Spotify; new spares exist.
+    groqMock.mockResolvedValueOnce(
+      llmSession(tenTracks(), [
+        llmTrack("SpareNew1", true),
+        llmTrack("SpareNew2", true),
+        llmTrack("SpareFam1"),
+      ]),
+    );
+    resolveAll();
+    searchMock.mockImplementation(async (title) =>
+      title === "New1" || title === "New2"
+        ? null
+        : {
+            id: `id-${title}`,
+            name: title,
+            artist: `${title} Artist`,
+            albumArt: null,
+            spotifyUrl: `https://open.spotify.com/track/${title}`,
+          },
+    );
+
+    const session = await generateSession(preset, { state: "A" });
+    expect(session.newCount).toBe(2);
+    const names = session.tracks.filter((t) => t.isNew).map((t) => t.name);
+    expect(names).toEqual(expect.arrayContaining(["SpareNew1", "SpareNew2"]));
+  });
+
   it("adventure 0 → a session with zero discoveries", async () => {
     groqMock.mockResolvedValueOnce(llmSession(tenTracks([])));
     resolveAll();

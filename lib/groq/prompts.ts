@@ -15,7 +15,9 @@ export function buildSessionMessages(
 ): ChatMessage[] {
   const energyWord = ENERGY_WORDS[Math.round(preset.energy) - 1] ?? "moderate";
   const seeds = preset.seedArtists.filter(Boolean);
-  const backfillCount = Math.max(3, Math.ceil(trackCount * 0.3));
+  // Generous alternates: the LLM occasionally names unfindable tracks, and
+  // spares also top up the novelty dose — 50% headroom keeps sessions full.
+  const backfillCount = Math.max(4, Math.ceil(trackCount * 0.5));
 
   const system = `You are Flow, a focus-music curator inside Spotify. You build listening sessions for people doing cognitively demanding work (coding, studying, reading). The one unbreakable rule: the session must be sonically CONSISTENT — steady energy, steady tempo, no jarring transitions, nothing startling. Unfamiliar or unpredictable music breaks concentration.
 
@@ -27,7 +29,7 @@ Rules:
 - "is_new": false = squarely in the listener's stated taste (their seed artists or very close). true = a DISCOVERY: an artist outside their seeds, but sonically so close it will not break focus.
 - Exactly the requested number of tracks marked is_new=true in "tracks". Discoveries must be sonically indistinguishable in energy/mood from the rest.
 - "reason": one short line (max 12 words) explaining why the track fits this session. For discoveries, mention the taste link (e.g. "Close to Tycho's mellow pulse").
-- "backfill": extra alternates in the same vibe (mix of is_new true and false) used to replace tracks that can't be found. Same consistency bar.
+- "backfill": extra alternates in the same vibe used to replace tracks that can't be found. Same consistency bar. Include at least 2 with is_new=true and the rest is_new=false.
 - No two tracks by the same artist back-to-back. No duplicate tracks.`;
 
   const lines = [

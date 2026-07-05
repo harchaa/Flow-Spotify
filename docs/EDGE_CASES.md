@@ -46,15 +46,29 @@ phase checkpoint. ✅ = verified, ⬜ = pending its phase.
 | Live: real session is consistent + resolvable (warm, cold-start, short) | verified 2026-07-06 | ✅ |
 | Wrong-artist search match (e.g. metal in a mellow session) → rejected | `tests/spotify.test.ts` (artist guard) | ✅ |
 
-## Phase 3 — Core UI loop (planned)
+## Phase 3 — Core UI loop
 
-- Empty/corrupted localStorage → defaults, no crash (zod-validated reads)
-- Setup with no artists entered → preset defaults + gentle prompt
-- IFrame API script fails to load → per-track embed fallback still plays
-- Session fetch fails → friendly retry state, never a blank screen
-- Recap with zero new tracks → calm "nothing new this time" state
-- Refresh mid-session → session restored; unfinished session → re-entry recap prompt
-- Keyboard-only pass + reduced-motion honored
+Live cases ran in headless Chrome against the dev server with real keys
+(15/15, run twice for LLM variance).
+
+| Case | How | Status |
+| --- | --- | --- |
+| Empty/corrupted localStorage → defaults, no crash | `tests/storage.test.ts` + live browser | ✅ |
+| Wrong-shape (stale-version) stored JSON → defaults | `tests/storage.test.ts` | ✅ |
+| Novelty nudge clamped to [-2, 0]; unknown preset ignored | `tests/storage.test.ts` | ✅ |
+| Discoveries deduped across sessions, kept per preset | `tests/storage.test.ts` | ✅ |
+| Recent preset falls back to newest if marked one deleted | `tests/storage.test.ts` | ✅ |
+| Setup with no artists → gentle prompt, cold-start defaults | UI copy + Phase 2 cold-start rules | ✅ |
+| Full loop live: setup → real session → embed player → recap | headless Chrome e2e | ✅ |
+| New badge is text+icon (visible with zero color perception) | e2e text assertion | ✅ |
+| Refresh mid-session → same session restored, no regeneration | headless Chrome e2e | ✅ |
+| Leave without ending → re-entry recap prompt on Home | headless Chrome e2e | ✅ |
+| Recap seen → prompt cleared; discoveries persist in Library data | headless Chrome e2e + `tests/storage.test.ts` | ✅ |
+| IFrame API script blocked → plain-embed fallback player | headless Chrome e2e (request interception) | ✅ |
+| Marked discoveries fail to resolve → topped up from new spares | `tests/generate.test.ts` + live fix | ✅ |
+| Session fetch fails → friendly retry state | `app/session/page.tsx` error view (manual) | ✅ |
+| Recap with zero new tracks → calm all-familiar state | recap page branch + template fallback | ✅ |
+| Keyboard-only pass + Lighthouse a11y | deferred to Phase 6 deploy sweep | ⬜ |
 
 ## Phase 4 — Save (planned)
 

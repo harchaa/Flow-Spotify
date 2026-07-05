@@ -104,6 +104,19 @@ export async function generateSession(
     }
   }
 
+  // Too few discoveries (they didn't resolve)? Swap familiar tracks for new
+  // spares so the adventure dial's promise is honored both ways.
+  let deficit = targetNew - tracks.filter((t) => t.isNew).length;
+  while (deficit > 0) {
+    const replacement = await nextSpare(true);
+    if (!replacement) break;
+    const index = tracks.findLastIndex((t) => !t.isNew);
+    if (index === -1) break;
+    seenIds.add(replacement.id);
+    tracks.splice(index, 1, replacement);
+    deficit--;
+  }
+
   if (tracks.length < 3) {
     throw new ApiError(FRIENDLY.sessionFailed);
   }

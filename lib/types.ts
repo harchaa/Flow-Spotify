@@ -1,5 +1,4 @@
 import { z } from "zod";
-import type { ResolvedTrack } from "@/lib/spotify/search";
 
 /** Preset kinds shown at setup; users can hold several presets. */
 export const PRESET_KINDS = ["Study", "Work", "Code", "Read"] as const;
@@ -45,15 +44,33 @@ export const EntryStateSchema = z.discriminatedUnion("state", [
 export type EntryState = z.infer<typeof EntryStateSchema>;
 
 /** A track in a generated session: resolved via Spotify + Flow metadata. */
-export type SessionTrack = ResolvedTrack & {
-  isNew: boolean;
-  reason: string;
-};
+export const SessionTrackSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  artist: z.string(),
+  albumArt: z.string().nullable(),
+  spotifyUrl: z.string(),
+  isNew: z.boolean(),
+  reason: z.string(),
+});
+export type SessionTrack = z.infer<typeof SessionTrackSchema>;
 
 export type GeneratedSession = {
   tracks: SessionTrack[];
   newCount: number;
 };
+
+/** A session as persisted in the browser (survives refresh; powers the re-entry recap). */
+export const StoredSessionSchema = z.object({
+  presetId: z.string(),
+  presetName: z.string(),
+  tracks: z.array(SessionTrackSchema),
+  newCount: z.number(),
+  startedAt: z.number(),
+  endedAt: z.number().nullable(),
+  recapSeen: z.boolean(),
+});
+export type StoredSession = z.infer<typeof StoredSessionSchema>;
 
 /** Shape the LLM must return (validated with zod; free-form text rejected). */
 export const LlmTrackSchema = z.object({

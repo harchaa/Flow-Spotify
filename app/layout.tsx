@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Figtree } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import { MotionInit } from "@/components/ReduceMotion";
 
 const appSans = Figtree({
   variable: "--font-app-sans",
@@ -27,6 +28,7 @@ export default function RootLayout({
     <html lang="en" className={`${appSans.variable} h-full antialiased`}>
       <body className="min-h-dvh">
         {/* Phone-width shell, centered — reads like the Spotify mobile app */}
+        <MotionInit />
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[390px] flex-col bg-background">
           <main className="flex-1 pb-24">{children}</main>
           <BottomNav />
