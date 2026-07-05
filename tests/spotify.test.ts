@@ -136,11 +136,49 @@ describe("searchTrack", () => {
     const { searchTrack } = await loadModules();
     fetchMock
       .mockResolvedValueOnce(tokenResponse())
-      .mockResolvedValueOnce(searchResponse([trackItem()]));
+      .mockResolvedValueOnce(
+        searchResponse([trackItem({ artists: [{ name: "D'Angelo" }] })]),
+      );
 
     await searchTrack('Don"t Stop', "D'Angelo");
     const url = decodeURIComponent(fetchMock.mock.calls[1][0] as string);
     expect(url).toContain('track:"Dont Stop" artist:"DAngelo"');
+  });
+
+  it("rejects a popular-but-wrong-artist result instead of poisoning the session", async () => {
+    const { searchTrack } = await loadModules();
+    const wrongArtist = trackItem({ id: "wrong", artists: [{ name: "Pantera" }] });
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(searchResponse([wrongArtist]))
+      .mockResolvedValueOnce(searchResponse([wrongArtist]));
+
+    expect(await searchTrack("10s", "Four Tet")).toBeNull();
+  });
+
+  it("skips wrong-artist results and picks the matching one further down", async () => {
+    const { searchTrack } = await loadModules();
+    fetchMock.mockResolvedValueOnce(tokenResponse()).mockResolvedValueOnce(
+      searchResponse([
+        trackItem({ id: "wrong", artists: [{ name: "Kanye West" }] }),
+        trackItem({ id: "right", artists: [{ name: "M83" }] }),
+      ]),
+    );
+
+    const track = await searchTrack("Midnight City", "M83");
+    expect(track?.id).toBe("right");
+  });
+
+  it("matches artists case/diacritic-insensitively (RÜFÜS DU SOL ≈ rufus du sol)", async () => {
+    const { searchTrack } = await loadModules();
+    fetchMock
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        searchResponse([trackItem({ artists: [{ name: "RÜFÜS DU SOL" }] })]),
+      );
+
+    const track = await searchTrack("Innerbloom", "Rufus Du Sol");
+    expect(track).not.toBeNull();
   });
 
   it("joins multiple artists and tolerates missing album art", async () => {

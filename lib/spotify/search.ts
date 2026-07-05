@@ -17,9 +17,9 @@ type SpotifyTrackItem = {
   external_urls: { spotify: string };
 };
 
-async function runSearch(query: string): Promise<ResolvedTrack | null> {
+async function runSearch(query: string): Promise<SpotifyTrackItem[]> {
   const token = await getAppToken();
-  const url = `https://api.spotify.com/v1/search?type=track&limit=1&q=${encodeURIComponent(query)}`;
+  const url = `https://api.spotify.com/v1/search?type=track&limit=3&q=${encodeURIComponent(query)}`;
 
   let res: Response;
   try {
@@ -35,9 +35,44 @@ async function runSearch(query: string): Promise<ResolvedTrack | null> {
   const data = (await res.json()) as {
     tracks?: { items?: SpotifyTrackItem[] };
   };
-  const item = data.tracks?.items?.[0];
-  if (!item) return null;
+  return data.tracks?.items ?? [];
+}
 
+/** Spotify's field filters break on embedded quotes — strip them. */
+function clean(s: string): string {
+  return s.replace(/["']/g, "").trim();
+}
+
+const normalize = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * Guards against wrong matches: a result only counts if the artist we asked
+ * for genuinely appears among the track's artists. Without this, the loose
+ * query happily returns a popular but unrelated track (e.g. a metal song in
+ * a mellow instrumental session).
+ */
+function artistMatches(requested: string, item: SpotifyTrackItem): boolean {
+  const wanted = normalize(requested);
+  if (!wanted) return false;
+  return item.artists.some((a) => {
+    const got = normalize(a.name);
+    if (!got) return false;
+    if (got.includes(wanted) || wanted.includes(got)) return true;
+    const wantedTokens = wanted.split(" ").filter((t) => t.length > 1);
+    const gotTokens = new Set(got.split(" "));
+    const common = wantedTokens.filter((t) => gotTokens.has(t));
+    return wantedTokens.length > 0 && common.length >= Math.ceil(wantedTokens.length / 2);
+  });
+}
+
+function toResolved(item: SpotifyTrackItem): ResolvedTrack {
   return {
     id: item.id,
     name: item.name,
@@ -47,16 +82,11 @@ async function runSearch(query: string): Promise<ResolvedTrack | null> {
   };
 }
 
-/** Spotify's field filters break on embedded quotes — strip them. */
-function clean(s: string): string {
-  return s.replace(/["']/g, "").trim();
-}
-
 /**
  * Resolve an LLM-named track to a real Spotify track.
  * Scoped field query first for precision; one loose retry for tracks whose
- * canonical title differs slightly; null if Spotify has no match (caller
- * drops it and backfills).
+ * canonical title differs slightly. Either way the artist must verify, or
+ * we return null and the caller drops + backfills.
  */
 export async function searchTrack(
   title: string,
@@ -65,6 +95,10 @@ export async function searchTrack(
   const scoped = await runSearch(
     `track:"${clean(title)}" artist:"${clean(artist)}"`,
   );
-  if (scoped) return scoped;
-  return runSearch(`${clean(title)} ${clean(artist)}`);
+  const scopedHit = scoped.find((item) => artistMatches(artist, item));
+  if (scopedHit) return toResolved(scopedHit);
+
+  const loose = await runSearch(`${clean(title)} ${clean(artist)}`);
+  const looseHit = loose.find((item) => artistMatches(artist, item));
+  return looseHit ? toResolved(looseHit) : null;
 }

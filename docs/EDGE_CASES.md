@@ -23,7 +23,7 @@ phase checkpoint. ✅ = verified, ⬜ = pending its phase.
 | Groq: two bad attempts → friendly error, never raw text | `tests/groq.test.ts` | ✅ |
 | Groq: missing key → 503 before any network call | `tests/groq.test.ts` | ✅ |
 | Groq: rate limit / timeout → friendly error | `tests/groq.test.ts` | ✅ |
-| Live: `/api/health?live=1` proves real keys work | manual (needs `.env.local`) | ⬜ |
+| Live: `/api/health?live=1` proves real keys work | verified 2026-07-06 | ✅ |
 
 ## Phase 2 — Session generation
 
@@ -43,7 +43,8 @@ phase checkpoint. ✅ = verified, ⬜ = pending its phase.
 | LLM over-marks `is_new` → trimmed to exact target via familiar spares | `tests/generate.test.ts` | ✅ |
 | Entry state B/C anchor reaches the prompt (ease vs strong anchor) | `tests/generate.test.ts` | ✅ |
 | Recap LLM failure → template fallback, never blocks | `app/api/recap/route.ts` (fallback path) | ✅ |
-| Live: real session is consistent + resolvable | manual (needs `.env.local`) | ⬜ |
+| Live: real session is consistent + resolvable (warm, cold-start, short) | verified 2026-07-06 | ✅ |
+| Wrong-artist search match (e.g. metal in a mellow session) → rejected | `tests/spotify.test.ts` (artist guard) | ✅ |
 
 ## Phase 3 — Core UI loop (planned)
 
