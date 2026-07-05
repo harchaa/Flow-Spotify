@@ -25,17 +25,25 @@ phase checkpoint. ✅ = verified, ⬜ = pending its phase.
 | Groq: rate limit / timeout → friendly error | `tests/groq.test.ts` | ✅ |
 | Live: `/api/health?live=1` proves real keys work | manual (needs `.env.local`) | ⬜ |
 
-## Phase 2 — Session generation (planned)
+## Phase 2 — Session generation
 
-- Track count sized to duration (short session → fewer tracks, near-zero novelty)
-- Adventure dial 0 → zero `is_new`; high dial capped at a sane fraction
-- `is_new` tracks never adjacent after post-processing
-- Search misses → backfill used; too many misses → still returns a coherent session
-- All backfills miss → friendly "couldn't build this session" error
-- Duplicate tracks from LLM → deduped
-- Cold start (0–1 seed artists) → safe/popular opening, gentler novelty
-- Anchor track (states B/C) present → session eases from it in 1–2 tracks
-- Novelty nudge from skips lowers the new-track fraction
+| Case | How | Status |
+| --- | --- | --- |
+| Track count sized to duration; minimum 3 | `tests/session-rules.test.ts` | ✅ |
+| Adventure 0 → zero new tracks | `tests/session-rules.test.ts`, `tests/generate.test.ts` | ✅ |
+| Very short session (≤4 tracks) → no novelty; <8 tracks → max 1 | `tests/session-rules.test.ts` | ✅ |
+| High dial capped by non-adjacent placement limit | `tests/session-rules.test.ts` | ✅ |
+| Skip nudge lowers dose; cold start (<2 seeds) one level gentler | `tests/session-rules.test.ts` | ✅ |
+| New tracks never in first two slots, never adjacent | `tests/session-rules.test.ts`, `tests/generate.test.ts` | ✅ |
+| Spacing loses/duplicates nothing | `tests/session-rules.test.ts` | ✅ |
+| Search misses → dropped + backfilled from LLM alternates | `tests/generate.test.ts` | ✅ |
+| Per-track search failure = miss, not crash | `tests/generate.test.ts` | ✅ |
+| Almost nothing resolves → friendly "couldn't build" error | `tests/generate.test.ts` | ✅ |
+| LLM duplicate tracks → deduped (name + resolved id) | `tests/generate.test.ts` | ✅ |
+| LLM over-marks `is_new` → trimmed to exact target via familiar spares | `tests/generate.test.ts` | ✅ |
+| Entry state B/C anchor reaches the prompt (ease vs strong anchor) | `tests/generate.test.ts` | ✅ |
+| Recap LLM failure → template fallback, never blocks | `app/api/recap/route.ts` (fallback path) | ✅ |
+| Live: real session is consistent + resolvable | manual (needs `.env.local`) | ⬜ |
 
 ## Phase 3 — Core UI loop (planned)
 
