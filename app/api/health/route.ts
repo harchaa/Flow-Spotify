@@ -19,6 +19,15 @@ export async function GET(req: NextRequest) {
   }
 
   const live: Record<string, boolean> = { spotify: false, groq: false };
+  // Debug block: only HTTP statuses and non-secret value shapes (the client
+  // id is public in OAuth; lengths reveal paste mistakes, never content).
+  const debug: Record<string, unknown> = {
+    clientIdLen: env.spotifyClientId.length,
+    clientIdPrefix: env.spotifyClientId.slice(0, 3),
+    secretLen: env.spotifyClientSecret.length,
+    refreshTokenLen: env.spotifyRefreshToken.length,
+    playlistIdLen: env.spotifyPlaylistId.length,
+  };
 
   if (isSpotifyConfigured) {
     try {
@@ -26,6 +35,27 @@ export async function GET(req: NextRequest) {
       live.spotify = true;
     } catch {
       live.spotify = false;
+    }
+    try {
+      const res = await fetch("https://accounts.spotify.com/api/token", {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${env.spotifyClientId}:${env.spotifyClientSecret}`,
+          ).toString("base64")}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: "grant_type=client_credentials",
+        signal: AbortSignal.timeout(10_000),
+      });
+      debug.spotifyTokenStatus = res.status;
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        debug.spotifyTokenError = body.error ?? "unknown";
+      }
+    } catch (err) {
+      debug.spotifyTokenStatus = "network-error";
+      debug.spotifyTokenError = err instanceof Error ? err.name : "unknown";
     }
   }
 
@@ -41,5 +71,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ configured, live });
+  return NextResponse.json({ configured, live, debug });
 }
