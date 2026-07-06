@@ -87,17 +87,12 @@ async function api(path, token, init = {}) {
   return res.json();
 }
 
-async function findOrCreatePlaylist(token) {
+async function findOrCreatePlaylist(token, me) {
   // Re-run with SPOTIFY_PLAYLIST_ID already in .env.local → reuse it.
   if (existingPlaylistId) {
-    try {
-      const playlist = await api(`/playlists/${existingPlaylistId}`, token);
-      return { playlist, created: false };
-    } catch {
-      console.log("Existing SPOTIFY_PLAYLIST_ID not found — creating a fresh playlist.");
-    }
+    const playlist = await api(`/playlists/${existingPlaylistId}`, token);
+    return { playlist, created: false };
   }
-  const me = await api("/me", token);
   const playlist = await api(`/users/${encodeURIComponent(me.id)}/playlists`, token, {
     method: "POST",
     body: JSON.stringify({
@@ -131,13 +126,36 @@ const server = createServer(async (req, res) => {
 
   try {
     const tokens = await exchangeCode(code);
-    const { playlist, created } = await findOrCreatePlaylist(tokens.access_token);
+    const me = await api("/me", tokens.access_token);
+    console.log(`\nAuthorized as: ${me.display_name ?? "(no name)"} (id: ${me.id})`);
+    console.log(
+      "In dev mode this account must own the app in the developer dashboard,\nor be added under the app's Settings → User Management.\n",
+    );
 
-    console.log(`\n${created ? "Created" : "Found existing"} playlist "${PLAYLIST_NAME}".`);
-    console.log(`Open it: ${playlist.external_urls.spotify}\n`);
-    console.log("Paste these into .env.local (and your deploy host's env):\n");
-    console.log(`SPOTIFY_REFRESH_TOKEN=${tokens.refresh_token}`);
-    console.log(`SPOTIFY_PLAYLIST_ID=${playlist.id}\n`);
+    try {
+      const { playlist, created } = await findOrCreatePlaylist(tokens.access_token, me);
+      console.log(`${created ? "Created" : "Found existing"} playlist "${PLAYLIST_NAME}".`);
+      console.log(`Open it: ${playlist.external_urls.spotify}\n`);
+      console.log("Paste these into .env.local (and your deploy host's env):\n");
+      console.log(`SPOTIFY_REFRESH_TOKEN=${tokens.refresh_token}`);
+      console.log(`SPOTIFY_PLAYLIST_ID=${playlist.id}\n`);
+    } catch (err) {
+      if (String(err.message).includes("403")) {
+        console.error(
+          `Playlist create/read was forbidden (403). Two ways forward:\n` +
+            `  1. Add this account (${me.display_name ?? me.id}) in the app's\n` +
+            `     Settings → User Management on the developer dashboard, then re-run.\n` +
+            `  2. Manual fallback: create a public playlist named "${PLAYLIST_NAME}"\n` +
+            `     in your Spotify app, copy its id from the share link\n` +
+            `     (open.spotify.com/playlist/<id>), put it in .env.local as\n` +
+            `     SPOTIFY_PLAYLIST_ID, and re-run this script to verify.\n\n` +
+            `Your refresh token is valid either way:\n\n` +
+            `SPOTIFY_REFRESH_TOKEN=${tokens.refresh_token}\n`,
+        );
+        process.exit(1);
+      }
+      throw err;
+    }
   } catch (err) {
     console.error(`\n${err.message}`);
     process.exit(1);
