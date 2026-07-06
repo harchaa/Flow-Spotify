@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import FlowButton from "@/components/FlowButton";
 import type { BrowseTile } from "@/app/api/browse/route";
+import { usePlayer } from "@/components/PlayerProvider";
 import { ReduceMotionToggle } from "@/components/ReduceMotion";
 import { useHydrated, useLocalSnapshot } from "@/lib/hooks";
 import {
@@ -32,8 +33,16 @@ const JUMP_BACK_IN = [
   { name: "Peaceful Piano", art: "bg-gradient-to-br from-sky-700 to-indigo-900" },
 ];
 
+const playlistHref = (tile: BrowseTile) =>
+  `/playlist/${tile.id}?${new URLSearchParams({
+    name: tile.name,
+    owner: tile.owner,
+    ...(tile.image ? { img: tile.image } : {}),
+  })}`;
+
 export default function HomePage() {
   const hydrated = useHydrated();
+  const player = usePlayer();
   const presets = useLocalSnapshot(loadPresets, []);
   const recentPreset = useLocalSnapshot(getRecentPreset, null);
   const pendingRecap = useLocalSnapshot(getPendingRecap, null);
@@ -44,14 +53,18 @@ export default function HomePage() {
   const [recapDismissed, setRecapDismissed] = useState(false);
   const [stopped, setStopped] = useState(false);
   const [activePill, setActivePill] = useState<(typeof FILTER_PILLS)[number]>("All");
-  const [browse, setBrowse] = useState<{ grid: BrowseTile[]; shelf: BrowseTile[] } | null>(null);
+  const [browse, setBrowse] = useState<{
+    grid: BrowseTile[];
+    shelf: BrowseTile[];
+    shows: BrowseTile[];
+  } | null>(null);
 
   useEffect(() => {
-    // Real public playlists for the shell (fallback: static tiles below).
+    // Real public playlists + shows for the shell (fallback: static tiles).
     const controller = new AbortController();
     fetch("/api/browse", { signal: controller.signal })
       .then((res) => res.json())
-      .then((data: { grid: BrowseTile[]; shelf: BrowseTile[] }) => {
+      .then((data: { grid: BrowseTile[]; shelf: BrowseTile[]; shows: BrowseTile[] }) => {
         if (data.grid.length > 0) setBrowse(data);
       })
       .catch(() => {});
@@ -74,6 +87,8 @@ export default function HomePage() {
   };
 
   const showRecap = pendingRecap && !recapDismissed && !running;
+  const showMusic = activePill === "All" || activePill === "Music";
+  const showPodcasts = activePill === "All" || activePill === "Podcasts";
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-6">
@@ -154,12 +169,13 @@ export default function HomePage() {
       )}
 
       {/* Spotify-style tile grid: real playlists + the user's Flow presets */}
+      {showMusic && (
       <section aria-label="Your shortcuts" className="grid grid-cols-2 gap-2">
         {browse
           ? browse.grid.map((tile) => (
               <Link
                 key={tile.id}
-                href={`/playlist/${tile.id}?name=${encodeURIComponent(tile.name)}`}
+                href={playlistHref(tile)}
                 className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised"
               >
                 {tile.image ? (
@@ -212,8 +228,10 @@ export default function HomePage() {
             </Link>
           ))}
       </section>
+      )}
 
       {/* THE FEATURE: Flow embedded in the Spotify home */}
+      {showMusic && (
       <section
         aria-label="Flow — focus discovery"
         className="rounded-2xl bg-surface p-4"
@@ -248,8 +266,50 @@ export default function HomePage() {
           </Link>
         )}
       </section>
+      )}
+
+      {/* Real podcasts (Podcasts / All pills) — play via show embeds */}
+      {showPodcasts && browse && browse.shows.length > 0 && (
+        <section aria-label="Podcasts">
+          <h2 className="text-lg font-bold">Podcasts</h2>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {browse.shows.map((show) => (
+              <button
+                key={show.id}
+                type="button"
+                onClick={() =>
+                  player.play(`spotify:show:${show.id}`, {
+                    title: show.name,
+                    subtitle: show.owner,
+                  })
+                }
+                className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised text-left"
+              >
+                {show.image ? (
+                  <img
+                    src={show.image}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 shrink-0 object-cover"
+                  />
+                ) : (
+                  <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center bg-surface text-muted">
+                    🎙
+                  </span>
+                )}
+                <span className="min-w-0 pr-2">
+                  <span className="block truncate text-xs font-semibold">{show.name}</span>
+                  <span className="block truncate text-[10px] text-muted">{show.owner}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Spotify-style "Jump back in" shelf */}
+      {showMusic && (
       <section aria-label="Jump back in">
         <h2 className="text-lg font-bold">Jump back in</h2>
         <div className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1">
@@ -257,7 +317,7 @@ export default function HomePage() {
             ? browse.shelf.map((tile) => (
                 <Link
                   key={tile.id}
-                  href={`/playlist/${tile.id}?name=${encodeURIComponent(tile.name)}`}
+                  href={playlistHref(tile)}
                   className="w-28 shrink-0"
                 >
                   {tile.image ? (
@@ -291,12 +351,13 @@ export default function HomePage() {
               ))}
         </div>
       </section>
+      )}
 
       <ReduceMotionToggle />
 
       <p className="pb-2 text-center text-[10px] text-muted">
         {browse
-          ? "Home playlists are real and playable — Flow is the feature under test."
+          ? "Playlists and podcasts are real and playable — Flow is the feature under test."
           : "Demo shell — Flow is the working feature; other tiles are illustrative."}
       </p>
     </div>

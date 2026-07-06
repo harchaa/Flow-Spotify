@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import NowPlaying from "@/components/NowPlaying";
-import StickyPlayer from "@/components/StickyPlayer";
+import { usePlayer } from "@/components/PlayerProvider";
 import TrackCard from "@/components/TrackCard";
 import { useLocalSnapshot } from "@/lib/hooks";
 import {
@@ -25,6 +25,7 @@ type ViewState =
 
 function SessionView() {
   const router = useRouter();
+  const player = usePlayer();
   const params = useSearchParams();
   const presetId = params.get("preset");
   const anchorTitle = params.get("anchorTitle");
@@ -182,8 +183,12 @@ function SessionView() {
     currentEndedRef.current = false;
     setPlayingIndex(index);
     setNowPlayingOpen(true);
-    // Remember what's playing — the taste hint if a new Flow starts over this one.
     const picked = session.tracks[index];
+    player.play(`spotify:track:${picked.id}`, {
+      title: picked.name,
+      subtitle: picked.artist,
+    });
+    // Remember what's playing — the taste hint if a new Flow starts over this one.
     updateStoredSession({
       lastPlayed: { title: picked.name, artist: picked.artist },
     });
@@ -197,9 +202,27 @@ function SessionView() {
       currentEndedRef.current = false;
       const next = playingIndex + 1;
       setPlayingIndex(next);
+      const upNext = session.tracks[next];
+      player.play(`spotify:track:${upNext.id}`, {
+        title: upNext.name,
+        subtitle: upNext.artist,
+      });
+      updateStoredSession({
+        lastPlayed: { title: upNext.name, artist: upNext.artist },
+      });
       maybeExtend(next, session);
     }
   };
+
+  // Auto-advance + skip detection ride on the global player's track-end events
+  // while this screen is open (audio itself outlives the screen).
+  useEffect(() => {
+    player.setTrackEndHandler(handleTrackEnd);
+  });
+  useEffect(() => {
+    return () => player.setTrackEndHandler(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount cleanup only
+  }, []);
 
   const endSession = () => {
     if (!session) return;
@@ -297,10 +320,6 @@ function SessionView() {
           onNext={() => selectTrack(playingIndex + 1)}
           onClose={() => setNowPlayingOpen(false)}
         />
-      )}
-
-      {playingIndex !== null && (
-        <StickyPlayer trackId={tracks[playingIndex].id} onTrackEnd={handleTrackEnd} />
       )}
     </div>
   );

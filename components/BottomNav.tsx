@@ -25,6 +25,13 @@ const TABS = [
       <path d="M4 4h2v16H4V4Zm5 0h2v16H9V4Zm5 .3 6.8 15-1.8.8L14.2 5l1.8-.7Z" />
     ),
   },
+  {
+    href: "/setup",
+    label: "Create",
+    icon: (
+      <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z" />
+    ),
+  },
 ];
 
 export default function BottomNav() {

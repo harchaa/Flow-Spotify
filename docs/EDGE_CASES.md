@@ -125,3 +125,14 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | Overlay close returns to list; Esc works; player stays mounted (audio uninterrupted) | headless Chrome e2e | ✅ |
 | Single seed artist → similar-artist blend, not one-artist loop (≤⅓ per artist, code-enforced) | prompt + variety guard, live-verified | ✅ |
 | Single seed no longer triggers the cold-start novelty penalty (0 seeds only) | `tests/session-rules.test.ts` + live | ✅ |
+
+## Spotify-parity pass (global player + functional shell)
+
+| Case | How | Status |
+| --- | --- | --- |
+| ONE global player in the layout — audio survives all navigation | headless Chrome (iframe identity check across routes) | ✅ |
+| Playlist Play → dock; keeps playing while browsing; expand shows tracklist | headless Chrome e2e | ✅ |
+| All/Music/Podcasts pills actually filter the home feed | headless Chrome e2e | ✅ |
+| Real podcasts (search type=show) play via show embeds in the dock | headless Chrome e2e | ✅ |
+| Session tracks ride the same dock; NowPlaying + auto-advance unchanged | headless Chrome e2e | ✅ |
+| 4-tab nav incl. Create (→ new Flow preset), like the real app | headless Chrome e2e | ✅ |

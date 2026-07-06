@@ -59,6 +59,11 @@ body {
   transition-duration: 0.01ms !important;
 }
 
+/* Keep page ends reachable above the docked global player */
+body.player-open main {
+  padding-bottom: 260px;
+}
+
 /* Visible focus for keyboard users on any interactive element */
 :focus-visible {
   outline: 2px solid var(--accent-text);
