@@ -17,15 +17,31 @@ import {
   trackCountFor,
 } from "@/lib/session/rules";
 
-/** A Spotify miss (or per-track failure) is a drop, never a crash. */
+/**
+ * A Spotify miss (or transient per-track failure) is a drop, never a crash.
+ * Exception: a 429 rate limit is global, so it propagates — retrying the
+ * remaining tracks would only deepen the block.
+ */
 async function resolveOrNull(candidate: LlmTrack): Promise<SessionTrack | null> {
   try {
     const resolved = await searchTrack(candidate.title, candidate.artist);
     if (!resolved) return null;
     return { ...resolved, isNew: candidate.is_new, reason: candidate.reason };
-  } catch {
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 429) throw err;
     return null;
   }
+}
+
+/** Resolve in small batches — dev-mode Spotify apps have tight burst limits. */
+async function resolveBatched(candidates: LlmTrack[]): Promise<(SessionTrack | null)[]> {
+  const BATCH = 5;
+  const results: (SessionTrack | null)[] = [];
+  for (let i = 0; i < candidates.length; i += BATCH) {
+    const batch = candidates.slice(i, i + BATCH);
+    results.push(...(await Promise.all(batch.map(resolveOrNull))));
+  }
+  return results;
 }
 
 /**
@@ -54,8 +70,8 @@ export async function generateSession(
   const main = candidates.slice(0, trackCount);
   const spare = candidates.slice(trackCount);
 
-  // Resolve the main list in parallel; walk spares only as needed.
-  const resolvedMain = await Promise.all(main.map(resolveOrNull));
+  // Resolve the main list (throttled); walk spares only as needed.
+  const resolvedMain = await resolveBatched(main);
 
   const tracks: SessionTrack[] = [];
   const seenIds = new Set<string>();

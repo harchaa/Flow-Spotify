@@ -14,6 +14,7 @@ export class ApiError extends Error {
 
 export const FRIENDLY = {
   spotifyDown: "Spotify isn't responding right now. Please try again in a moment.",
+  spotifyBusy: "Spotify is limiting requests right now. Please try again in a little while.",
   groqDown: "The session generator isn't responding right now. Please try again in a moment.",
   groqUnreadable: "We couldn't put a session together this time. Please try again.",
   sessionFailed: "We couldn't build a full session this time. Please try again.",

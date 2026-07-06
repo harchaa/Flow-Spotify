@@ -30,6 +30,9 @@ async function runSearch(query: string, limit = 3): Promise<SpotifyTrackItem[]> 
   } catch (err) {
     throw toApiError(err, FRIENDLY.spotifyDown);
   }
+  // Rate limit gets its own status + message so callers can stop early
+  // instead of burning the remaining quota on doomed retries.
+  if (res.status === 429) throw new ApiError(FRIENDLY.spotifyBusy, 429);
   if (!res.ok) throw new ApiError(FRIENDLY.spotifyDown);
 
   const data = (await res.json()) as {

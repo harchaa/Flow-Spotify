@@ -7,7 +7,7 @@ vi.mock("@/lib/spotify/search", () => ({ searchTrack: vi.fn() }));
 import { groqJson } from "@/lib/groq/client";
 import { searchTrack } from "@/lib/spotify/search";
 import { generateSession } from "@/lib/session/generate";
-import { FRIENDLY } from "@/lib/errors";
+import { ApiError, FRIENDLY } from "@/lib/errors";
 
 const groqMock = vi.mocked(groqJson);
 const searchMock = vi.mocked(searchTrack);
@@ -115,6 +115,15 @@ describe("generateSession", () => {
 
     await expect(generateSession(preset, { state: "A" })).rejects.toThrow(
       FRIENDLY.sessionFailed,
+    );
+  });
+
+  it("propagates a Spotify rate limit instead of burning quota on retries", async () => {
+    groqMock.mockResolvedValueOnce(llmSession(tenTracks()));
+    searchMock.mockRejectedValue(new ApiError(FRIENDLY.spotifyBusy, 429));
+
+    await expect(generateSession(preset, { state: "A" })).rejects.toThrow(
+      FRIENDLY.spotifyBusy,
     );
   });
 
