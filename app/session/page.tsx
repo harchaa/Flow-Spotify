@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import NowPlaying from "@/components/NowPlaying";
 import StickyPlayer from "@/components/StickyPlayer";
 import TrackCard from "@/components/TrackCard";
 import { useLocalSnapshot } from "@/lib/hooks";
@@ -44,8 +45,10 @@ function SessionView() {
   const [view, setView] = useState<ViewState>({ status: "loading" });
   const [retryToken, setRetryToken] = useState(0);
   const [playingIndex, setPlayingIndex] = useState<number | null>(null);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
   const currentEndedRef = useRef(false);
   const skippedNewRef = useRef(false);
+  const extendingRef = useRef(false);
 
   useEffect(() => {
     const preset = presetId ? getPreset(presetId) : null;
@@ -110,10 +113,59 @@ function SessionView() {
     };
   }, [presetId, restored, retryToken, router, stateParam, anchorTitle, anchorArtist]);
 
-  const effectiveView: ViewState = restored
-    ? { status: "ready", session: restored }
-    : view;
+  // Local state wins once set (extensions update it); the restored snapshot
+  // only seeds the first render after a refresh.
+  const effectiveView: ViewState =
+    view.status === "ready"
+      ? view
+      : restored
+        ? { status: "ready", session: restored }
+        : view;
   const session = effectiveView.status === "ready" ? effectiveView.session : null;
+
+  /**
+   * Endless mode: as playback nears the end of the queue, quietly generate
+   * the next batch (eased from what's playing, excluding everything already
+   * queued) and append it. Failures retry on the next advance — the session
+   * never crashes over an extension.
+   */
+  const maybeExtend = (nextIndex: number, current: StoredSession) => {
+    if (extendingRef.current) return;
+    if (current.tracks.length - nextIndex > 3) return;
+    const preset = getPreset(current.presetId);
+    if (!preset) return;
+    extendingRef.current = true;
+
+    const anchor = current.tracks[nextIndex] ?? current.tracks[current.tracks.length - 1];
+    fetch("/api/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        preset,
+        entry: { state: "B", anchor: { title: anchor.name, artist: anchor.artist } },
+        exclude: current.tracks.map((t) => ({ title: t.name, artist: t.artist })),
+      }),
+    })
+      .then(async (res) => {
+        const data = (await res.json()) as GeneratedSession & { error?: string };
+        if (!res.ok || data.error) throw new Error(data.error);
+        const known = new Set(current.tracks.map((t) => t.id));
+        const fresh = data.tracks.filter((t) => !known.has(t.id));
+        if (fresh.length === 0) throw new Error("no new tracks");
+        const merged: StoredSession = {
+          ...current,
+          tracks: [...current.tracks, ...fresh],
+          newCount: current.newCount + fresh.filter((t) => t.isNew).length,
+        };
+        setStoredSession(merged);
+        addDiscoveries(merged.presetId, fresh);
+        setView({ status: "ready", session: merged });
+        extendingRef.current = false;
+      })
+      .catch(() => {
+        extendingRef.current = false;
+      });
+  };
 
   const selectTrack = (index: number) => {
     if (!session) return;
@@ -129,11 +181,13 @@ function SessionView() {
     }
     currentEndedRef.current = false;
     setPlayingIndex(index);
+    setNowPlayingOpen(true);
     // Remember what's playing — the taste hint if a new Flow starts over this one.
     const picked = session.tracks[index];
     updateStoredSession({
       lastPlayed: { title: picked.name, artist: picked.artist },
     });
+    maybeExtend(index, session);
   };
 
   const handleTrackEnd = () => {
@@ -141,7 +195,9 @@ function SessionView() {
     if (!session || playingIndex === null) return;
     if (playingIndex < session.tracks.length - 1) {
       currentEndedRef.current = false;
-      setPlayingIndex(playingIndex + 1);
+      const next = playingIndex + 1;
+      setPlayingIndex(next);
+      maybeExtend(next, session);
     }
   };
 
@@ -195,9 +251,10 @@ function SessionView() {
         <div>
           <h1 className="text-2xl font-bold">{session!.presetName}</h1>
           <p className="mt-1 text-sm text-muted" aria-live="polite">
+            Endless ·{" "}
             {session!.newCount === 0
-              ? "All familiar this session."
-              : `${session!.newCount} new ${session!.newCount === 1 ? "track" : "tracks"} added this session.`}
+              ? "all familiar so far."
+              : `${session!.newCount} new ${session!.newCount === 1 ? "track" : "tracks"} so far.`}
           </p>
         </div>
         <button
@@ -229,6 +286,18 @@ function SessionView() {
           Less adventurous — keep future sessions more familiar
         </button>
       </div>
+
+      {nowPlayingOpen && playingIndex !== null && (
+        <NowPlaying
+          track={tracks[playingIndex]}
+          presetName={session!.presetName}
+          hasPrev={playingIndex > 0}
+          hasNext={playingIndex < tracks.length - 1}
+          onPrev={() => selectTrack(playingIndex - 1)}
+          onNext={() => selectTrack(playingIndex + 1)}
+          onClose={() => setNowPlayingOpen(false)}
+        />
+      )}
 
       {playingIndex !== null && (
         <StickyPlayer trackId={tracks[playingIndex].id} onTrackEnd={handleTrackEnd} />

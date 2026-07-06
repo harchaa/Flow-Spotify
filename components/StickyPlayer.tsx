@@ -79,6 +79,8 @@ export default function StickyPlayer({ trackId, onTrackEnd }: Props) {
           controllerRef.current = controller;
           window.clearTimeout(timeout);
           setMode("api");
+          // The user just tapped a track — start it without a second tap.
+          controller.play();
           controller.addListener("playback_update", ({ data }) => {
             const nearEnd = data.duration > 0 && data.position >= data.duration - 400;
             if (nearEnd && endedForRef.current !== trackIdRef.current) {
@@ -124,7 +126,7 @@ export default function StickyPlayer({ trackId, onTrackEnd }: Props) {
 
   return (
     <div
-      className="fixed bottom-[72px] left-1/2 z-30 w-full max-w-[390px] -translate-x-1/2 px-2"
+      className="fixed bottom-[72px] left-1/2 z-[60] w-full max-w-[390px] -translate-x-1/2 px-2"
       aria-label="Player"
     >
       <div className="overflow-hidden rounded-xl bg-surface shadow-lg">

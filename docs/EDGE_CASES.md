@@ -113,3 +113,13 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | Save env missing → Save hidden, `/api/save` 503 friendly | live curl (Phase 4) | ✅ |
 | Fresh incognito on the live URL: full loop with no login | after deploy | ⬜ |
 | Live Save all → real playlist updates | verified locally; re-check on live URL | ⬜ |
+
+## Post-feedback changes (endless sessions + Now Playing)
+
+| Case | How | Status |
+| --- | --- | --- |
+| Setup no longer offers a session length; sessions are endless | headless Chrome check | ✅ |
+| Nearing the queue end → next batch auto-appends (eased, deduped, excluded) | headless Chrome e2e (7 → 14 tracks) | ✅ |
+| Extension failure/rate limit → silent retry on next advance, never crashes | `maybeExtend` catch path | ✅ |
+| Tap a track → plays immediately + full-screen Now Playing (art, prev/next) | headless Chrome e2e | ✅ |
+| Overlay close returns to list; Esc works; player stays mounted (audio uninterrupted) | headless Chrome e2e | ✅ |

@@ -6,7 +6,8 @@ import AdventureDial from "@/components/AdventureDial";
 import { savePreset, setRecentPresetId } from "@/lib/storage";
 import { PRESET_KINDS, type Preset, type PresetKind } from "@/lib/types";
 
-const LENGTHS = [15, 25, 35, 50, 60, 90];
+/** Sessions are endless — this only sizes the first generated batch. */
+const INITIAL_BATCH_MINUTES = 35;
 
 /** Smart defaults per kind — shown, editable, adventure defaults LOW. */
 const DEFAULTS: Record<PresetKind, { energy: number; instrumentalOnly: boolean }> = {
@@ -23,7 +24,6 @@ export default function SetupPage() {
   const [artistInput, setArtistInput] = useState("");
   const [energy, setEnergy] = useState(DEFAULTS.Code.energy);
   const [instrumentalOnly, setInstrumentalOnly] = useState(DEFAULTS.Code.instrumentalOnly);
-  const [sessionLength, setSessionLength] = useState(35);
   const [adventure, setAdventure] = useState(1);
 
   const pickKind = (k: PresetKind) => {
@@ -49,7 +49,7 @@ export default function SetupPage() {
       seedArtists: artists,
       energy,
       instrumentalOnly,
-      sessionLength,
+      sessionLength: INITIAL_BATCH_MINUTES,
       adventure,
       favourite: true,
       noveltyNudge: 0,
@@ -181,25 +181,11 @@ export default function SetupPage() {
         </button>
       </div>
 
-      <div>
-        <label htmlFor="length" className="text-sm font-medium">
-          Session length
-        </label>
-        <select
-          id="length"
-          value={sessionLength}
-          onChange={(e) => setSessionLength(Number(e.target.value))}
-          className="mt-2 min-h-11 w-full rounded-lg border border-white/15 bg-surface px-3 text-sm"
-        >
-          {LENGTHS.map((l) => (
-            <option key={l} value={l}>
-              {l} minutes
-            </option>
-          ))}
-        </select>
-      </div>
-
       <AdventureDial value={adventure} onChange={setAdventure} />
+
+      <p className="text-xs text-muted">
+        Sessions run as long as you do — Flow keeps the music coming until you stop.
+      </p>
 
       <button
         type="button"

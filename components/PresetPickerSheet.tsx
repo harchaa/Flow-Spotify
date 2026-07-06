@@ -74,7 +74,7 @@ export default function PresetPickerSheet({
                 className="flex min-h-12 w-full items-center justify-between rounded-xl bg-surface px-4 text-left text-sm font-medium"
               >
                 {preset.name}
-                <span className="text-xs text-muted">{preset.sessionLength} min</span>
+                <span className="text-xs text-muted">{preset.kind}</span>
               </button>
             </li>
           ))}

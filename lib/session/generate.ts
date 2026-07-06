@@ -52,6 +52,7 @@ async function resolveBatched(candidates: LlmTrack[]): Promise<(SessionTrack | n
 export async function generateSession(
   preset: Preset,
   entry: EntryState,
+  exclude: { title: string; artist: string }[] = [],
 ): Promise<GeneratedSession> {
   const trackCount = trackCountFor(preset.sessionLength);
   const targetNew = noveltyCountFor({
@@ -63,7 +64,7 @@ export async function generateSession(
 
   const llm = await groqJson(
     LlmSessionSchema,
-    buildSessionMessages(preset, entry, trackCount, targetNew),
+    buildSessionMessages(preset, entry, trackCount, targetNew, exclude),
   );
 
   const candidates = dedupeByTitleArtist([...llm.tracks, ...llm.backfill]);

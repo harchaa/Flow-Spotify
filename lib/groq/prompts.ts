@@ -12,6 +12,7 @@ export function buildSessionMessages(
   entry: EntryState,
   trackCount: number,
   newCount: number,
+  exclude: { title: string; artist: string }[] = [],
 ): ChatMessage[] {
   const energyWord = ENERGY_WORDS[Math.round(preset.energy) - 1] ?? "moderate";
   const seeds = preset.seedArtists.filter(Boolean);
@@ -44,6 +45,15 @@ Rules:
       : `Vocals are fine as long as the energy stays steady.`,
     `Mark exactly ${newCount} of the ${trackCount} tracks as is_new=true.`,
   ];
+
+  if (exclude.length > 0) {
+    lines.push(
+      `Already played this session — do NOT include any of these tracks: ${exclude
+        .slice(-40)
+        .map((t) => `"${t.title}" by ${t.artist}`)
+        .join("; ")}.`,
+    );
+  }
 
   if (entry.state === "B") {
     lines.push(

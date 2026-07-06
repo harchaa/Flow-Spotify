@@ -104,7 +104,7 @@ export default function HomePage() {
             <section className="rounded-xl bg-surface p-5" aria-label="Start a Flow">
               <h2 className="text-lg font-semibold">Start your {recentPreset.name}?</h2>
               <p className="mt-1 text-sm text-muted">
-                {recentPreset.sessionLength} min · steady{" "}
+                Endless · steady{" "}
                 {["very calm", "calm", "moderate", "upbeat", "energetic"][recentPreset.energy - 1]}{" "}
                 sound
               </p>
