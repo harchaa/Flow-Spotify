@@ -4,9 +4,10 @@
  *
  * What it does:
  *   1. Runs the Spotify Authorization Code flow as YOU (the playlist owner)
- *      with scopes playlist-modify-public + playlist-read-private, redirect
- *      http://127.0.0.1:8080 (add that exact URI in the developer dashboard).
- *   2. Finds or creates the public playlist "Flow Discoveries".
+ *      with scope playlist-modify-public, redirect http://127.0.0.1:8080
+ *      (add that exact URI in the Spotify developer dashboard).
+ *   2. Reuses the playlist in SPOTIFY_PLAYLIST_ID if set, else creates the
+ *      public playlist "Flow Discoveries".
  *   3. Prints SPOTIFY_REFRESH_TOKEN and SPOTIFY_PLAYLIST_ID to paste into
  *      .env.local (and your host's env when deploying).
  *
@@ -38,10 +39,10 @@ function loadEnv() {
     console.error("Missing SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET (env or .env.local).");
     process.exit(1);
   }
-  return { id, secret };
+  return { id, secret, existingPlaylistId: fromFile.SPOTIFY_PLAYLIST_ID || "" };
 }
 
-const { id: clientId, secret: clientSecret } = loadEnv();
+const { id: clientId, secret: clientSecret, existingPlaylistId } = loadEnv();
 const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 
 const authorizeUrl =
@@ -50,9 +51,10 @@ const authorizeUrl =
     client_id: clientId,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
-    // modify-public: add tracks at runtime; read-private: list your playlists
-    // so re-running finds the existing "Flow Discoveries" instead of duplicating.
-    scope: "playlist-modify-public playlist-read-private",
+    scope: "playlist-modify-public",
+    // Force the consent dialog so a previously cached, narrower grant is
+    // never silently reused.
+    show_dialog: "true",
   });
 
 async function exchangeCode(code) {
@@ -86,16 +88,16 @@ async function api(path, token, init = {}) {
 }
 
 async function findOrCreatePlaylist(token) {
-  const me = await api("/me", token);
-  let page = await api("/me/playlists?limit=50", token);
-  while (true) {
-    const hit = page.items.find(
-      (p) => p.name === PLAYLIST_NAME && p.owner?.id === me.id,
-    );
-    if (hit) return { playlist: hit, created: false };
-    if (!page.next) break;
-    page = await api(page.next.replace("https://api.spotify.com/v1", ""), token);
+  // Re-run with SPOTIFY_PLAYLIST_ID already in .env.local → reuse it.
+  if (existingPlaylistId) {
+    try {
+      const playlist = await api(`/playlists/${existingPlaylistId}`, token);
+      return { playlist, created: false };
+    } catch {
+      console.log("Existing SPOTIFY_PLAYLIST_ID not found — creating a fresh playlist.");
+    }
   }
+  const me = await api("/me", token);
   const playlist = await api(`/users/${encodeURIComponent(me.id)}/playlists`, token, {
     method: "POST",
     body: JSON.stringify({
