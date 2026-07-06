@@ -81,7 +81,8 @@ Live cases ran in headless Chrome against the dev server with real keys
 | Empty selection → no-op, zero network calls | `tests/playlist.test.ts` | ✅ |
 | Expired/revoked refresh token → friendly error, core loop fine | `tests/playlist.test.ts` | ✅ |
 | Network failure mid-add → friendly error | `tests/playlist.test.ts` | ✅ |
-| Live: Save all → real playlist updates, "Open the playlist" works | manual (needs owner token, see README) | ⬜ |
+| Live: Save adds to the real playlist; repeat save dedupes | verified 2026-07-06 via /api/save | ✅ |
+| Spotify Feb-2026 endpoint migration (legacy /tracks + /users/{id}/playlists → 403) | fixed: /items + /me/playlists, probed live | ✅ |
 
 ## Phase 5 — Flow button, presets, entry states
 
@@ -111,4 +112,4 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | No console spam, no dead files, no secrets in the repo | grep + tidy pass | ✅ |
 | Save env missing → Save hidden, `/api/save` 503 friendly | live curl (Phase 4) | ✅ |
 | Fresh incognito on the live URL: full loop with no login | after deploy | ⬜ |
-| Live Save all → real playlist updates | after owner token setup + deploy | ⬜ |
+| Live Save all → real playlist updates | verified locally; re-check on live URL | ⬜ |

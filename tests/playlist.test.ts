@@ -8,8 +8,9 @@ function jsonResponse(body: unknown, ok = true): Response {
 }
 
 const ownerToken = () => jsonResponse({ access_token: "owner-token" });
+// Post-Feb-2026 /items shape: entries carry `item`, not `track`.
 const playlistPage = (ids: string[], next: string | null = null) =>
-  jsonResponse({ items: ids.map((id) => ({ track: { id } })), next });
+  jsonResponse({ items: ids.map((id) => ({ item: { id } })), next });
 
 async function loadModules() {
   const playlist = await import("@/lib/spotify/playlist");
@@ -53,6 +54,9 @@ describe("saveToSharedPlaylist", () => {
 
     const addBody = JSON.parse(fetchMock.mock.calls[2][1].body as string);
     expect(addBody.uris).toEqual(["spotify:track:new1", "spotify:track:new2"]);
+    // both read and write must use the post-Feb-2026 /items endpoints
+    expect(fetchMock.mock.calls[1][0]).toContain("/playlists/playlist123/items");
+    expect(fetchMock.mock.calls[2][0]).toContain("/playlists/playlist123/items");
   });
 
   it("saving the same tracks twice adds nothing the second time", async () => {

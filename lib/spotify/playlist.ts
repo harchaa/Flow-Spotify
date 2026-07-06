@@ -34,11 +34,15 @@ async function getOwnerToken(): Promise<string> {
   return data.access_token;
 }
 
-/** All track ids already in the playlist (paginated). */
+/**
+ * All track ids already in the playlist (paginated).
+ * Uses the post-Feb-2026 `/items` endpoint — the legacy `/tracks` path now
+ * returns 403 for every caller.
+ */
 async function getExistingTrackIds(token: string): Promise<Set<string>> {
   const ids = new Set<string>();
   let url: string | null =
-    `https://api.spotify.com/v1/playlists/${env.spotifyPlaylistId}/tracks?fields=items(track(id)),next&limit=100`;
+    `https://api.spotify.com/v1/playlists/${env.spotifyPlaylistId}/items?fields=items(item(id)),next&limit=100`;
 
   while (url) {
     let res: Response;
@@ -52,11 +56,11 @@ async function getExistingTrackIds(token: string): Promise<Set<string>> {
     }
     if (!res.ok) throw new ApiError(FRIENDLY.saveFailed);
     const data = (await res.json()) as {
-      items?: { track?: { id?: string } }[];
+      items?: { item?: { id?: string } }[];
       next?: string | null;
     };
-    for (const item of data.items ?? []) {
-      if (item.track?.id) ids.add(item.track.id);
+    for (const entry of data.items ?? []) {
+      if (entry.item?.id) ids.add(entry.item.id);
     }
     url = data.next ?? null;
   }
@@ -89,7 +93,7 @@ export async function saveToSharedPlaylist(trackIds: string[]): Promise<SaveResu
   let res: Response;
   try {
     res = await fetch(
-      `https://api.spotify.com/v1/playlists/${env.spotifyPlaylistId}/tracks`,
+      `https://api.spotify.com/v1/playlists/${env.spotifyPlaylistId}/items`,
       {
         method: "POST",
         headers: {

@@ -87,13 +87,14 @@ async function api(path, token, init = {}) {
   return res.json();
 }
 
-async function findOrCreatePlaylist(token, me) {
+async function findOrCreatePlaylist(token) {
   // Re-run with SPOTIFY_PLAYLIST_ID already in .env.local → reuse it.
   if (existingPlaylistId) {
     const playlist = await api(`/playlists/${existingPlaylistId}`, token);
     return { playlist, created: false };
   }
-  const playlist = await api(`/users/${encodeURIComponent(me.id)}/playlists`, token, {
+  // Post-Feb-2026 create endpoint; the legacy /users/{id}/playlists is 403 now.
+  const playlist = await api(`/me/playlists`, token, {
     method: "POST",
     body: JSON.stringify({
       name: PLAYLIST_NAME,
@@ -133,7 +134,7 @@ const server = createServer(async (req, res) => {
     );
 
     try {
-      const { playlist, created } = await findOrCreatePlaylist(tokens.access_token, me);
+      const { playlist, created } = await findOrCreatePlaylist(tokens.access_token);
       console.log(`${created ? "Created" : "Found existing"} playlist "${PLAYLIST_NAME}".`);
       console.log(`Open it: ${playlist.external_urls.spotify}\n`);
       console.log("Paste these into .env.local (and your deploy host's env):\n");
