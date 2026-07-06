@@ -1,8 +1,10 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- Spotify CDN playlist covers */
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FlowButton from "@/components/FlowButton";
+import type { BrowseTile } from "@/app/api/browse/route";
 import { ReduceMotionToggle } from "@/components/ReduceMotion";
 import { useHydrated, useLocalSnapshot } from "@/lib/hooks";
 import {
@@ -42,6 +44,19 @@ export default function HomePage() {
   const [recapDismissed, setRecapDismissed] = useState(false);
   const [stopped, setStopped] = useState(false);
   const [activePill, setActivePill] = useState<(typeof FILTER_PILLS)[number]>("All");
+  const [browse, setBrowse] = useState<{ grid: BrowseTile[]; shelf: BrowseTile[] } | null>(null);
+
+  useEffect(() => {
+    // Real public playlists for the shell (fallback: static tiles below).
+    const controller = new AbortController();
+    fetch("/api/browse", { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data: { grid: BrowseTile[]; shelf: BrowseTile[] }) => {
+        if (data.grid.length > 0) setBrowse(data);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   const running = Boolean(runningSession) && !stopped;
 
@@ -138,22 +153,45 @@ export default function HomePage() {
         </Link>
       )}
 
-      {/* Spotify-style tile grid: shell playlists + the user's Flow presets */}
+      {/* Spotify-style tile grid: real playlists + the user's Flow presets */}
       <section aria-label="Your shortcuts" className="grid grid-cols-2 gap-2">
-        {MOCK_TILES.map((tile) => (
-          <div
-            key={tile.name}
-            className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised"
-          >
-            <span
-              aria-hidden="true"
-              className={`flex h-14 w-14 shrink-0 items-center justify-center text-lg text-white ${tile.art}`}
-            >
-              {tile.icon}
-            </span>
-            <span className="truncate pr-2 text-xs font-semibold">{tile.name}</span>
-          </div>
-        ))}
+        {browse
+          ? browse.grid.map((tile) => (
+              <Link
+                key={tile.id}
+                href={`/playlist/${tile.id}?name=${encodeURIComponent(tile.name)}`}
+                className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised"
+              >
+                {tile.image ? (
+                  <img
+                    src={tile.image}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 shrink-0 object-cover"
+                  />
+                ) : (
+                  <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center bg-surface text-muted">
+                    ♪
+                  </span>
+                )}
+                <span className="truncate pr-2 text-xs font-semibold">{tile.name}</span>
+              </Link>
+            ))
+          : MOCK_TILES.map((tile) => (
+              <div
+                key={tile.name}
+                className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`flex h-14 w-14 shrink-0 items-center justify-center text-lg text-white ${tile.art}`}
+                >
+                  {tile.icon}
+                </span>
+                <span className="truncate pr-2 text-xs font-semibold">{tile.name}</span>
+              </div>
+            ))}
         {hydrated &&
           presets.slice(0, 2).map((preset) => (
             <Link
@@ -211,30 +249,55 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* Spotify-style "Jump back in" shelf (shell content) */}
+      {/* Spotify-style "Jump back in" shelf */}
       <section aria-label="Jump back in">
         <h2 className="text-lg font-bold">Jump back in</h2>
         <div className="-mx-4 mt-3 flex gap-3 overflow-x-auto px-4 pb-1">
-          {JUMP_BACK_IN.map((tile) => (
-            <div key={tile.name} className="w-28 shrink-0">
-              <div
-                aria-hidden="true"
-                className={`flex h-28 w-28 items-end rounded-lg p-2 ${tile.art}`}
-              >
-                <span className="text-[11px] font-bold leading-tight text-white/90">
-                  {tile.name}
-                </span>
-              </div>
-              <p className="mt-1 truncate text-xs text-muted">{tile.name}</p>
-            </div>
-          ))}
+          {browse
+            ? browse.shelf.map((tile) => (
+                <Link
+                  key={tile.id}
+                  href={`/playlist/${tile.id}?name=${encodeURIComponent(tile.name)}`}
+                  className="w-28 shrink-0"
+                >
+                  {tile.image ? (
+                    <img
+                      src={tile.image}
+                      alt=""
+                      width={112}
+                      height={112}
+                      className="h-28 w-28 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <span aria-hidden="true" className="flex h-28 w-28 items-center justify-center rounded-lg bg-surface-raised text-2xl text-muted">
+                      ♪
+                    </span>
+                  )}
+                  <p className="mt-1 truncate text-xs text-muted">{tile.name}</p>
+                </Link>
+              ))
+            : JUMP_BACK_IN.map((tile) => (
+                <div key={tile.name} className="w-28 shrink-0">
+                  <div
+                    aria-hidden="true"
+                    className={`flex h-28 w-28 items-end rounded-lg p-2 ${tile.art}`}
+                  >
+                    <span className="text-[11px] font-bold leading-tight text-white/90">
+                      {tile.name}
+                    </span>
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted">{tile.name}</p>
+                </div>
+              ))}
         </div>
       </section>
 
       <ReduceMotionToggle />
 
       <p className="pb-2 text-center text-[10px] text-muted">
-        Demo shell — Flow is the working feature; other tiles are illustrative.
+        {browse
+          ? "Home playlists are real and playable — Flow is the feature under test."
+          : "Demo shell — Flow is the working feature; other tiles are illustrative."}
       </p>
     </div>
   );
