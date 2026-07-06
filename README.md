@@ -61,6 +61,11 @@ the public **Flow Discoveries** playlist, and prints the two env values to paste
 `.env.local` / your host. Visitors never log in — the server always acts as the owner,
 deduping so a track is never added twice.
 
+> Note: this app uses Spotify's **post-February-2026** playlist endpoints
+> (`POST /me/playlists`, `/playlists/{id}/items`). The legacy
+> `/users/{id}/playlists` and `/playlists/{id}/tracks` paths return 403 for all
+> apps since the March 2026 migration deadline.
+
 ## Deploy (Vercel)
 
 1. Push this repo to GitHub and import it in Vercel (defaults are fine).
