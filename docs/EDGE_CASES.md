@@ -103,8 +103,12 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | Deleting the recent preset → newest becomes tap default | `tests/storage.test.ts` | ✅ |
 | Search: real results; zero results → calm empty state | headless Chrome e2e (mocked zero-result) | ✅ |
 
-## Phase 6 — Deploy sweep (planned)
+## Phase 6 — Deploy sweep
 
-- Fresh incognito on the live URL: full loop with no login
-- Env vars removed one at a time → graceful degradation each time
-- Lighthouse accessibility pass ≥ 95; AA contrast spot checks
+| Case | How | Status |
+| --- | --- | --- |
+| Lighthouse accessibility on all four screens | local audit — Home/Setup/Library/Search all **100** | ✅ |
+| No console spam, no dead files, no secrets in the repo | grep + tidy pass | ✅ |
+| Save env missing → Save hidden, `/api/save` 503 friendly | live curl (Phase 4) | ✅ |
+| Fresh incognito on the live URL: full loop with no login | after deploy | ⬜ |
+| Live Save all → real playlist updates | after owner token setup + deploy | ⬜ |
