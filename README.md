@@ -10,6 +10,10 @@ a few taste-adjacent new tracks, and surfaces a discovery recap when attention i
 Any visitor can use the live app end-to-end with **no login**: generate a session, hear
 every track in the browser, and save discoveries to a real public Spotify playlist.
 
+> **Live app:** https://flow-spotify.vercel.app · Build plan:
+> [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) · Edge-case matrix:
+> [docs/EDGE_CASES.md](docs/EDGE_CASES.md)
+
 ## How it works (LLM + Search hybrid)
 
 There is no traditional recommender here — Spotify's recommendations and audio-features
