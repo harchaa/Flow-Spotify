@@ -136,3 +136,6 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | Real podcasts (search type=show) play via show embeds in the dock | headless Chrome e2e | ✅ |
 | Session tracks ride the same dock; NowPlaying + auto-advance unchanged | headless Chrome e2e | ✅ |
 | 4-tab nav incl. Create (→ new Flow preset), like the real app | headless Chrome e2e | ✅ |
+| Flow home presence: floating "Try Flow" pill first-run; compact suggestion row after | headless Chrome | ✅ |
+| FlowMark logo identifies the feature everywhere it surfaces | headless Chrome | ✅ |
+| Custom focus types: add your own, persists, selectable, drives naming/defaults | headless Chrome | ✅ |

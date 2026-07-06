@@ -91,7 +91,7 @@ export default function FlowButton({ presets, recentPreset, running, onStop }: P
   };
 
   return (
-    <div className="relative flex flex-col items-center py-6">
+    <div className="relative flex flex-col items-center">
       {/* Radial overlay */}
       {radialOpen && (
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-10">
@@ -145,30 +145,18 @@ export default function FlowButton({ presets, recentPreset, running, onStop }: P
             : "Start Flow. Tap for your recent preset, hold for all presets"
         }
         aria-haspopup="dialog"
-        className={`z-20 flex h-24 w-24 touch-none select-none items-center justify-center rounded-full text-xl font-extrabold shadow-lg ${
+        title={
+          running
+            ? "Hold and drag to OFF to stop"
+            : `Tap: start ${recentPreset?.name ?? "a Flow"} · Hold: choose a preset`
+        }
+        className={`z-20 flex h-14 w-14 touch-none select-none items-center justify-center rounded-full text-sm font-extrabold shadow-lg ${
           running
             ? "bg-accent-contrast text-accent-text ring-2 ring-accent-text"
             : "bg-accent text-accent-contrast"
         }`}
       >
-        Flow
-      </button>
-
-      <p className="mt-3 text-xs text-muted" aria-hidden="true">
-        {running
-          ? "Hold and drag to OFF to stop"
-          : recentPreset
-            ? `Tap: ${recentPreset.name} · Hold: choose`
-            : "Tap to set up your first Flow"}
-      </p>
-
-      {/* Accessible fallback: the same actions as a plain list */}
-      <button
-        type="button"
-        onClick={() => setSheetOpen(true)}
-        className="mt-1 min-h-11 rounded-full px-4 text-xs text-muted underline"
-      >
-        Choose a preset from a list
+        {running ? "❚❚" : "▶"}
       </button>
 
       <PresetPickerSheet

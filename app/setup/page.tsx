@@ -3,33 +3,58 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import AdventureDial from "@/components/AdventureDial";
-import { savePreset, setRecentPresetId } from "@/lib/storage";
-import { PRESET_KINDS, type Preset, type PresetKind } from "@/lib/types";
+import FlowMark from "@/components/FlowMark";
+import { useLocalSnapshot } from "@/lib/hooks";
+import { addCustomKind, getCustomKinds, savePreset, setRecentPresetId } from "@/lib/storage";
+import { PRESET_KINDS, type Preset } from "@/lib/types";
 
 /** Sessions are endless — this only sizes the first generated batch. */
 const INITIAL_BATCH_MINUTES = 35;
 
-/** Smart defaults per kind — shown, editable, adventure defaults LOW. */
-const DEFAULTS: Record<PresetKind, { energy: number; instrumentalOnly: boolean }> = {
+/** Smart defaults per suggested kind; custom kinds get the calm default. */
+const DEFAULTS: Record<string, { energy: number; instrumentalOnly: boolean }> = {
   Study: { energy: 1, instrumentalOnly: true },
   Work: { energy: 3, instrumentalOnly: false },
   Code: { energy: 2, instrumentalOnly: true },
   Read: { energy: 1, instrumentalOnly: true },
 };
+const FALLBACK_DEFAULTS = { energy: 2, instrumentalOnly: true };
 
 export default function SetupPage() {
   const router = useRouter();
-  const [kind, setKind] = useState<PresetKind>("Code");
+  const storedCustom = useLocalSnapshot(getCustomKinds, []);
+  const [addedKinds, setAddedKinds] = useState<string[]>([]);
+  const [kind, setKind] = useState<string>("Code");
+  const [addingKind, setAddingKind] = useState(false);
+  const [kindInput, setKindInput] = useState("");
   const [artists, setArtists] = useState<string[]>([]);
   const [artistInput, setArtistInput] = useState("");
   const [energy, setEnergy] = useState(DEFAULTS.Code.energy);
   const [instrumentalOnly, setInstrumentalOnly] = useState(DEFAULTS.Code.instrumentalOnly);
   const [adventure, setAdventure] = useState(1);
 
-  const pickKind = (k: PresetKind) => {
+  const allKinds = [
+    ...PRESET_KINDS,
+    ...storedCustom.filter((k) => !addedKinds.includes(k)),
+    ...addedKinds,
+  ];
+
+  const pickKind = (k: string) => {
     setKind(k);
-    setEnergy(DEFAULTS[k].energy);
-    setInstrumentalOnly(DEFAULTS[k].instrumentalOnly);
+    const defaults = DEFAULTS[k] ?? FALLBACK_DEFAULTS;
+    setEnergy(defaults.energy);
+    setInstrumentalOnly(defaults.instrumentalOnly);
+  };
+
+  const addKind = () => {
+    const clean = kindInput.trim().replace(/\s+/g, " ").slice(0, 20);
+    if (!clean) return;
+    const existing = allKinds.find((k) => k.toLowerCase() === clean.toLowerCase());
+    addCustomKind(clean);
+    if (!existing) setAddedKinds([...addedKinds, clean]);
+    pickKind(existing ?? clean);
+    setKindInput("");
+    setAddingKind(false);
   };
 
   const addArtist = () => {
@@ -62,24 +87,27 @@ export default function SetupPage() {
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-8">
-      <header>
-        <h1 className="text-2xl font-bold">Set up your Flow</h1>
-        <p className="mt-1 text-sm text-muted">
-          One quick screen — you can tune everything later.
-        </p>
+      <header className="flex items-center gap-3">
+        <FlowMark size={44} />
+        <div>
+          <h1 className="text-2xl font-bold">Set up your Flow</h1>
+          <p className="mt-0.5 text-sm text-muted">
+            One quick screen — you can tune everything later.
+          </p>
+        </div>
       </header>
 
       <fieldset>
         <legend className="text-sm font-medium">What are you focusing on?</legend>
-        <div className="mt-2 grid grid-cols-4 gap-1.5" role="radiogroup" aria-label="Preset type">
-          {PRESET_KINDS.map((k) => (
+        <div className="mt-2 flex flex-wrap gap-1.5" role="radiogroup" aria-label="Focus type">
+          {allKinds.map((k) => (
             <button
               key={k}
               type="button"
               role="radio"
               aria-checked={kind === k}
               onClick={() => pickKind(k)}
-              className={`min-h-11 rounded-full border text-sm font-medium ${
+              className={`min-h-11 rounded-full border px-4 text-sm font-medium ${
                 kind === k
                   ? "border-accent-text bg-accent-contrast text-accent-text"
                   : "border-white/15 text-muted"
@@ -88,6 +116,45 @@ export default function SetupPage() {
               {k}
             </button>
           ))}
+          {addingKind ? (
+            <span className="flex items-center gap-1.5">
+              <label htmlFor="kind-input" className="sr-only">
+                Name your focus type
+              </label>
+              <input
+                id="kind-input"
+                type="text"
+                autoFocus
+                value={kindInput}
+                onChange={(e) => setKindInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addKind();
+                  }
+                  if (e.key === "Escape") setAddingKind(false);
+                }}
+                placeholder="e.g. Writing"
+                className="min-h-11 w-32 rounded-full border border-accent-text bg-surface px-4 text-sm placeholder:text-muted focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={addKind}
+                className="min-h-11 rounded-full bg-surface-raised px-4 text-sm font-medium"
+              >
+                Add
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingKind(true)}
+              aria-label="Add your own focus type"
+              className="min-h-11 rounded-full border border-dashed border-white/25 px-4 text-sm font-medium text-muted"
+            >
+              + Add your own
+            </button>
+          )}
         </div>
       </fieldset>
 

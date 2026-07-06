@@ -1,12 +1,11 @@
 import { z } from "zod";
 
-/** Preset kinds shown at setup; users can hold several presets. */
+/** Suggested focus types at setup — users can add their own (kind is free text). */
 export const PRESET_KINDS = ["Study", "Work", "Code", "Read"] as const;
-export type PresetKind = (typeof PRESET_KINDS)[number];
 
 export const PresetSchema = z.object({
   id: z.string(),
-  kind: z.enum(PRESET_KINDS),
+  kind: z.string().min(1),
   name: z.string(),
   seedArtists: z.array(z.string()),
   /** 1 (calm) – 5 (energetic); steady within a session either way. */

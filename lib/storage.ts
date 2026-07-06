@@ -19,6 +19,7 @@ const KEYS = {
   discoveries: "flow:v1:discoveries",
   session: "flow:v1:session",
   reduceMotion: "flow:v1:reduceMotion",
+  customKinds: "flow:v1:customKinds",
 } as const;
 
 function read<T>(key: string, schema: z.ZodType<T>, fallback: T): T {
@@ -134,6 +135,21 @@ export function clearStoredSession() {
 export function getPendingRecap(): StoredSession | null {
   const session = getStoredSession();
   return session && !session.recapSeen ? session : null;
+}
+
+// ---- Custom focus types (user-added kinds beyond Study/Work/Code/Read) -------
+
+export function getCustomKinds(): string[] {
+  return read(KEYS.customKinds, z.array(z.string()), []);
+}
+
+export function addCustomKind(kind: string) {
+  const clean = kind.trim();
+  if (!clean) return;
+  const kinds = getCustomKinds();
+  if (!kinds.some((k) => k.toLowerCase() === clean.toLowerCase())) {
+    write(KEYS.customKinds, [...kinds, clean].slice(0, 12));
+  }
 }
 
 // ---- Preferences -------------------------------------------------------------

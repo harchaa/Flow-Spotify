@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import FlowButton from "@/components/FlowButton";
+import FlowMark from "@/components/FlowMark";
 import type { BrowseTile } from "@/app/api/browse/route";
 import { usePlayer } from "@/components/PlayerProvider";
 import { ReduceMotionToggle } from "@/components/ReduceMotion";
@@ -155,19 +156,6 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Running session → quick way back (like Spotify's now-playing bar) */}
-      {hydrated && running && runningSession && (
-        <Link
-          href={`/session?preset=${runningSession.presetId}`}
-          className="flex items-center justify-between rounded-xl border border-accent-text/40 bg-surface-raised px-4 py-3"
-        >
-          <span className="text-sm font-medium">
-            {runningSession.presetName} is running
-          </span>
-          <span className="text-xs font-semibold text-accent-text">Return →</span>
-        </Link>
-      )}
-
       {/* Spotify-style tile grid: real playlists + the user's Flow presets */}
       {showMusic && (
       <section aria-label="Your shortcuts" className="grid grid-cols-2 gap-2">
@@ -215,11 +203,8 @@ export default function HomePage() {
               href={`/session?preset=${preset.id}`}
               className="flex min-h-14 items-center gap-2 overflow-hidden rounded-md bg-surface-raised ring-1 ring-accent-text/30"
             >
-              <span
-                aria-hidden="true"
-                className="flex h-14 w-14 shrink-0 items-center justify-center bg-accent text-lg font-bold text-accent-contrast"
-              >
-                F
+              <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center">
+                <FlowMark size={56} />
               </span>
               <span className="min-w-0 pr-2">
                 <span className="block truncate text-xs font-semibold">{preset.name}</span>
@@ -230,42 +215,50 @@ export default function HomePage() {
       </section>
       )}
 
-      {/* THE FEATURE: Flow embedded in the Spotify home */}
-      {showMusic && (
-      <section
-        aria-label="Flow — focus discovery"
-        className="rounded-2xl bg-surface p-4"
-      >
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">Flow</h2>
-          <span className="rounded-full bg-accent-contrast px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-accent-text">
-            Focus discovery
+      {/* THE FEATURE: Flow as a quiet suggestion, not a billboard */}
+      {showMusic && hydrated && recentPreset && (
+        <section aria-label="Suggested for you">
+          <h2 className="text-lg font-bold">Suggested for you</h2>
+          <div className="mt-3 flex items-center gap-3 rounded-xl bg-surface p-3">
+            <FlowMark size={44} />
+            <Link
+              href={`/session?preset=${
+                running && runningSession ? runningSession.presetId : recentPreset.id
+              }`}
+              className="min-w-0 flex-1"
+            >
+              <p className="truncate text-sm font-semibold">
+                {running && runningSession
+                  ? `${runningSession.presetName} is running`
+                  : `Start your ${recentPreset.name}?`}
+              </p>
+              <p className="truncate text-xs text-muted">
+                {running
+                  ? "Tap to return · hold the button to stop"
+                  : "Flow · endless focus, quiet discovery"}
+              </p>
+            </Link>
+            <FlowButton
+              presets={presets}
+              recentPreset={recentPreset}
+              running={running}
+              onStop={stopFlow}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* First visit: a floating nudge to try the feature (hidden while listening) */}
+      {hydrated && !recentPreset && !player.current && (
+        <Link
+          href="/setup"
+          className="fixed bottom-24 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2.5 rounded-full bg-accent py-2.5 pl-3 pr-5 shadow-2xl"
+        >
+          <FlowMark size={30} />
+          <span className="text-sm font-bold text-accent-contrast">
+            Try Flow — set up your first focus mix
           </span>
-        </div>
-        <p className="mt-1 text-sm text-muted">
-          {recentPreset
-            ? `Start your ${recentPreset.name}? Steady sound, a little discovery, quietly.`
-            : "Consistent focus sessions that quietly work in new music — recapped when you're done."}
-        </p>
-
-        {hydrated && (
-          <FlowButton
-            presets={presets}
-            recentPreset={recentPreset}
-            running={running}
-            onStop={stopFlow}
-          />
-        )}
-
-        {hydrated && !recentPreset && (
-          <Link
-            href="/setup"
-            className="mx-auto flex min-h-11 w-fit items-center rounded-full bg-accent px-6 text-sm font-bold text-accent-contrast"
-          >
-            Set up your first Flow
-          </Link>
-        )}
-      </section>
+        </Link>
       )}
 
       {/* Real podcasts (Podcasts / All pills) — play via show embeds */}
