@@ -17,9 +17,9 @@ type SpotifyTrackItem = {
   external_urls: { spotify: string };
 };
 
-async function runSearch(query: string): Promise<SpotifyTrackItem[]> {
+async function runSearch(query: string, limit = 3): Promise<SpotifyTrackItem[]> {
   const token = await getAppToken();
-  const url = `https://api.spotify.com/v1/search?type=track&limit=3&q=${encodeURIComponent(query)}`;
+  const url = `https://api.spotify.com/v1/search?type=track&limit=${limit}&q=${encodeURIComponent(query)}`;
 
   let res: Response;
   try {
@@ -88,6 +88,15 @@ function toResolved(item: SpotifyTrackItem): ResolvedTrack {
  * canonical title differs slightly. Either way the artist must verify, or
  * we return null and the caller drops + backfills.
  */
+/** Free-text search for the Search screen (user-typed query, no artist guard). */
+export async function searchTracksList(
+  query: string,
+  limit = 5,
+): Promise<ResolvedTrack[]> {
+  const items = await runSearch(query.trim(), limit);
+  return items.map(toResolved);
+}
+
 export async function searchTrack(
   title: string,
   artist: string,

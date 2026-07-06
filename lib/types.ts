@@ -69,6 +69,11 @@ export const StoredSessionSchema = z.object({
   startedAt: z.number(),
   endedAt: z.number().nullable(),
   recapSeen: z.boolean(),
+  /** What was playing last — the taste hint for entry state B. */
+  lastPlayed: z
+    .object({ title: z.string(), artist: z.string() })
+    .nullable()
+    .default(null),
 });
 export type StoredSession = z.infer<typeof StoredSessionSchema>;
 

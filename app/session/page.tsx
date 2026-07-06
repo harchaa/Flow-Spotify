@@ -15,7 +15,7 @@ import {
   setStoredSession,
   updateStoredSession,
 } from "@/lib/storage";
-import type { GeneratedSession, StoredSession } from "@/lib/types";
+import type { EntryState, GeneratedSession, StoredSession } from "@/lib/types";
 
 type ViewState =
   | { status: "loading" }
@@ -24,11 +24,17 @@ type ViewState =
 
 function SessionView() {
   const router = useRouter();
-  const presetId = useSearchParams().get("preset");
+  const params = useSearchParams();
+  const presetId = params.get("preset");
+  const anchorTitle = params.get("anchorTitle");
+  const anchorArtist = params.get("anchorArtist");
+  const stateParam = params.get("state");
 
   // Refresh mid-session → restore the stored session instead of regenerating.
+  // Exception: an explicit "start from this song" (state C) is intentional —
+  // it always generates fresh around the anchor, never restores.
   const restored = useLocalSnapshot(() => {
-    if (!presetId) return null;
+    if (!presetId || stateParam === "C") return null;
     const stored = getStoredSession();
     return stored && stored.presetId === presetId && stored.endedAt === null
       ? stored
@@ -50,11 +56,24 @@ function SessionView() {
     setRecentPresetId(preset.id);
     if (restored) return;
 
+    // Entry state: C = intentional "start from this song" (strong anchor);
+    // B = something was already playing in our player (light taste hint,
+    // eased over 1-2 tracks); A = fresh start from the preset's taste.
+    let entry: EntryState = { state: "A" };
+    if (stateParam === "C" && anchorTitle && anchorArtist) {
+      entry = { state: "C", anchor: { title: anchorTitle, artist: anchorArtist } };
+    } else {
+      const previous = getStoredSession();
+      if (previous?.endedAt === null && previous.lastPlayed) {
+        entry = { state: "B", anchor: previous.lastPlayed };
+      }
+    }
+
     let cancelled = false;
     fetch("/api/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ preset, entry: { state: "A" } }),
+      body: JSON.stringify({ preset, entry }),
     })
       .then(async (res) => {
         const data = (await res.json()) as GeneratedSession & { error?: string };
@@ -74,6 +93,7 @@ function SessionView() {
           startedAt: Date.now(),
           endedAt: null,
           recapSeen: false,
+          lastPlayed: null,
         };
         setStoredSession(session);
         // Discoveries persist immediately — never lost, even if the tab closes.
@@ -88,7 +108,7 @@ function SessionView() {
     return () => {
       cancelled = true;
     };
-  }, [presetId, restored, retryToken, router]);
+  }, [presetId, restored, retryToken, router, stateParam, anchorTitle, anchorArtist]);
 
   const effectiveView: ViewState = restored
     ? { status: "ready", session: restored }
@@ -109,6 +129,11 @@ function SessionView() {
     }
     currentEndedRef.current = false;
     setPlayingIndex(index);
+    // Remember what's playing — the taste hint if a new Flow starts over this one.
+    const picked = session.tracks[index];
+    updateStoredSession({
+      lastPlayed: { title: picked.name, artist: picked.artist },
+    });
   };
 
   const handleTrackEnd = () => {

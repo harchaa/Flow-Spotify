@@ -61,6 +61,7 @@ const session = (overrides: Partial<StoredSession> = {}): StoredSession => ({
   startedAt: 1,
   endedAt: null,
   recapSeen: false,
+  lastPlayed: null,
   ...overrides,
 });
 

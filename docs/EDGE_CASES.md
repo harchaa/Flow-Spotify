@@ -83,14 +83,25 @@ Live cases ran in headless Chrome against the dev server with real keys
 | Network failure mid-add → friendly error | `tests/playlist.test.ts` | ✅ |
 | Live: Save all → real playlist updates, "Open the playlist" works | manual (needs owner token, see README) | ⬜ |
 
-## Phase 5 — Flow button & presets (planned)
+## Phase 5 — Flow button, presets, entry states
 
-- Quick tap with no presets yet → routes to setup instead of failing
-- Hold + release outside any radial target → cancels, nothing starts
-- No favourited presets → radial falls back to the preset list
-- Deleting the most-recent preset → next-most-recent becomes the tap default
-- Search: empty query / no results → calm empty state
-- Keyboard/screen-reader path can start and stop every Flow
+Live cases ran in headless Chrome against real APIs (16/16).
+
+| Case | How | Status |
+| --- | --- | --- |
+| Quick tap with no presets → routes to setup, never fails | headless Chrome e2e | ✅ |
+| Hold (350ms) opens radial of favourites; drag starts that preset | headless Chrome e2e | ✅ |
+| Hold + release outside every target → cancels, nothing starts | headless Chrome e2e + `tests/radial.test.ts` | ✅ |
+| Radial targets spaced ≥50px apart; OFF never collides with presets | `tests/radial.test.ts` | ✅ |
+| Running Flow: hold shows OFF; drag to OFF ends silently (recap deferred) | headless Chrome e2e | ✅ |
+| List fallback (keyboard/screen reader) starts and stops every Flow | headless Chrome e2e | ✅ |
+| Entry state A: fresh start from preset taste | e2e payload assertion | ✅ |
+| Entry state B: track was playing → its title/artist sent as taste hint | e2e payload assertion | ✅ |
+| Entry state C: chosen song sent as strong anchor | e2e payload assertion | ✅ |
+| State C bypasses session restore (explicit intent wins) | fixed + e2e | ✅ |
+| Library: favourite toggle, feed-more, per-preset Discoveries | headless Chrome e2e | ✅ |
+| Deleting the recent preset → newest becomes tap default | `tests/storage.test.ts` | ✅ |
+| Search: real results; zero results → calm empty state | headless Chrome e2e (mocked zero-result) | ✅ |
 
 ## Phase 6 — Deploy sweep (planned)
 

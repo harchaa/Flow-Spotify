@@ -2,15 +2,37 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import FlowButton from "@/components/FlowButton";
 import { ReduceMotionToggle } from "@/components/ReduceMotion";
 import { useHydrated, useLocalSnapshot } from "@/lib/hooks";
-import { getPendingRecap, getRecentPreset, updateStoredSession } from "@/lib/storage";
+import {
+  getPendingRecap,
+  getRecentPreset,
+  getStoredSession,
+  loadPresets,
+  updateStoredSession,
+} from "@/lib/storage";
 
 export default function HomePage() {
   const hydrated = useHydrated();
+  const presets = useLocalSnapshot(loadPresets, []);
   const recentPreset = useLocalSnapshot(getRecentPreset, null);
   const pendingRecap = useLocalSnapshot(getPendingRecap, null);
+  const wasRunning = useLocalSnapshot(
+    () => getStoredSession()?.endedAt === null,
+    false,
+  );
   const [recapDismissed, setRecapDismissed] = useState(false);
+  const [stopped, setStopped] = useState(false);
+
+  const running = wasRunning && !stopped;
+
+  const stopFlow = () => {
+    // Stopping saves silently (the user got busy) — the recap waits for
+    // re-entry rather than interrupting now.
+    updateStoredSession({ endedAt: Date.now() });
+    setStopped(true);
+  };
 
   const dismissRecap = () => {
     // Dismissible — discoveries are already safe in the preset's list.
@@ -18,7 +40,7 @@ export default function HomePage() {
     setRecapDismissed(true);
   };
 
-  const showRecap = pendingRecap && !recapDismissed;
+  const showRecap = pendingRecap && !recapDismissed && !running;
 
   return (
     <div className="flex flex-col gap-6 px-4 pt-8">
@@ -67,30 +89,41 @@ export default function HomePage() {
         </section>
       )}
 
+      {hydrated && (
+        <FlowButton
+          presets={presets}
+          recentPreset={recentPreset}
+          running={running}
+          onStop={stopFlow}
+        />
+      )}
+
       {hydrated &&
         (recentPreset ? (
-          <section className="rounded-xl bg-surface p-5" aria-label="Start a Flow">
-            <h2 className="text-lg font-semibold">Start your {recentPreset.name}?</h2>
-            <p className="mt-1 text-sm text-muted">
-              {recentPreset.sessionLength} min · steady{" "}
-              {["very calm", "calm", "moderate", "upbeat", "energetic"][recentPreset.energy - 1]}{" "}
-              sound
-            </p>
-            <div className="mt-4 flex gap-2">
-              <Link
-                href={`/session?preset=${recentPreset.id}`}
-                className="inline-flex min-h-11 items-center rounded-full bg-accent px-6 text-sm font-bold text-accent-contrast"
-              >
-                Start Flow
-              </Link>
-              <Link
-                href="/setup"
-                className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-medium text-muted"
-              >
-                New preset
-              </Link>
-            </div>
-          </section>
+          !running && (
+            <section className="rounded-xl bg-surface p-5" aria-label="Start a Flow">
+              <h2 className="text-lg font-semibold">Start your {recentPreset.name}?</h2>
+              <p className="mt-1 text-sm text-muted">
+                {recentPreset.sessionLength} min · steady{" "}
+                {["very calm", "calm", "moderate", "upbeat", "energetic"][recentPreset.energy - 1]}{" "}
+                sound
+              </p>
+              <div className="mt-4 flex gap-2">
+                <Link
+                  href={`/session?preset=${recentPreset.id}`}
+                  className="inline-flex min-h-11 items-center rounded-full bg-accent px-6 text-sm font-bold text-accent-contrast"
+                >
+                  Start Flow
+                </Link>
+                <Link
+                  href="/setup"
+                  className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-medium text-muted"
+                >
+                  New preset
+                </Link>
+              </div>
+            </section>
+          )
         ) : (
           <section className="rounded-xl bg-surface p-5">
             <h2 className="text-lg font-semibold">Focus without the loop</h2>
