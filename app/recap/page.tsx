@@ -8,11 +8,62 @@ import { useHydrated, useLocalSnapshot } from "@/lib/hooks";
 import { RECAP_FALLBACK } from "@/lib/groq/prompts";
 import { getStoredSession, updateStoredSession } from "@/lib/storage";
 
+type SaveMap = Record<string, "saving" | "saved">;
+
 export default function RecapPage() {
   const router = useRouter();
   const hydrated = useHydrated();
   const session = useLocalSnapshot(getStoredSession, null);
   const [llmHeadline, setLlmHeadline] = useState<string | null>(null);
+  const [saveEnabled, setSaveEnabled] = useState(false);
+  const [saveMap, setSaveMap] = useState<SaveMap>({});
+  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Save is optional infrastructure — only offer it if the server has the
+    // owner token configured (never crash or dangle otherwise).
+    const controller = new AbortController();
+    fetch("/api/health", { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data: { configured?: { save?: boolean } }) => {
+        if (data.configured?.save) setSaveEnabled(true);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
+
+  const saveTracks = (ids: string[]) => {
+    setSaveError(null);
+    setSaveMap((m) => ({
+      ...m,
+      ...Object.fromEntries(ids.map((id) => [id, "saving" as const])),
+    }));
+    fetch("/api/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ trackIds: ids }),
+    })
+      .then(async (res) => {
+        const data = (await res.json()) as { playlistUrl?: string; error?: string };
+        if (!res.ok || !data.playlistUrl) {
+          throw new Error(data.error ?? "Save failed");
+        }
+        setPlaylistUrl(data.playlistUrl);
+        setSaveMap((m) => ({
+          ...m,
+          ...Object.fromEntries(ids.map((id) => [id, "saved" as const])),
+        }));
+      })
+      .catch((err: Error) => {
+        setSaveError(err.message);
+        setSaveMap((m) => {
+          const next = { ...m };
+          for (const id of ids) if (next[id] === "saving") delete next[id];
+          return next;
+        });
+      });
+  };
 
   useEffect(() => {
     if (!session) return;
@@ -77,11 +128,50 @@ export default function RecapPage() {
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2" aria-label="New tracks from this session">
-          {discoveries.map((track) => (
-            <TrackCard key={track.id} track={track} isPlaying={false} showReason />
-          ))}
-        </ul>
+        <>
+          <ul className="flex flex-col gap-2" aria-label="New tracks from this session">
+            {discoveries.map((track) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                isPlaying={false}
+                showReason
+                onSave={saveEnabled ? () => saveTracks([track.id]) : undefined}
+                saveState={saveMap[track.id] ?? "idle"}
+              />
+            ))}
+          </ul>
+
+          {saveEnabled && (
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => saveTracks(discoveries.map((t) => t.id))}
+                disabled={discoveries.every((t) => saveMap[t.id] === "saved")}
+                className="min-h-11 rounded-full border border-accent-text/40 text-sm font-semibold text-accent-text disabled:opacity-50"
+              >
+                {discoveries.every((t) => saveMap[t.id] === "saved")
+                  ? "✓ All saved to Flow Discoveries"
+                  : "Save all to Flow Discoveries"}
+              </button>
+              {saveError && (
+                <p role="alert" className="text-center text-xs text-danger-text">
+                  {saveError}
+                </p>
+              )}
+              {playlistUrl && (
+                <a
+                  href={playlistUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-center text-sm text-accent-text underline"
+                >
+                  Open the playlist in Spotify ↗
+                </a>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <p className="text-xs text-muted">

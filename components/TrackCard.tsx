@@ -4,14 +4,26 @@
 import NewBadge from "@/components/NewBadge";
 import type { SessionTrack } from "@/lib/types";
 
+export type SaveState = "idle" | "saving" | "saved";
+
 type Props = {
   track: SessionTrack;
   isPlaying: boolean;
   showReason?: boolean;
   onPlay?: () => void;
+  /** When provided, renders a Save-to-playlist action (recap screen). */
+  onSave?: () => void;
+  saveState?: SaveState;
 };
 
-export default function TrackCard({ track, isPlaying, showReason, onPlay }: Props) {
+export default function TrackCard({
+  track,
+  isPlaying,
+  showReason,
+  onPlay,
+  onSave,
+  saveState = "idle",
+}: Props) {
   return (
     <li
       className={`flex items-center gap-3 rounded-xl p-2 ${
@@ -53,6 +65,25 @@ export default function TrackCard({ track, isPlaying, showReason, onPlay }: Prop
           )}
         </span>
       </button>
+      {onSave && (
+        <button
+          type="button"
+          onClick={onSave}
+          disabled={saveState !== "idle"}
+          aria-label={
+            saveState === "saved"
+              ? `${track.name} saved to playlist`
+              : `Save ${track.name} to the Flow Discoveries playlist`
+          }
+          className={`flex h-11 min-w-16 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-semibold ${
+            saveState === "saved"
+              ? "border-accent-text/40 text-accent-text"
+              : "border-white/15 text-foreground"
+          }`}
+        >
+          {saveState === "saved" ? "✓ Saved" : saveState === "saving" ? "Saving…" : "Save"}
+        </button>
+      )}
       <a
         href={track.spotifyUrl}
         target="_blank"

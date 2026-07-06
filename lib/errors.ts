@@ -17,6 +17,7 @@ export const FRIENDLY = {
   groqDown: "The session generator isn't responding right now. Please try again in a moment.",
   groqUnreadable: "We couldn't put a session together this time. Please try again.",
   sessionFailed: "We couldn't build a full session this time. Please try again.",
+  saveFailed: "Couldn't save to the playlist right now. Please try again in a moment.",
   notConfigured: "This feature isn't set up on the server yet.",
 } as const;
 

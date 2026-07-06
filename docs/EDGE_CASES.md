@@ -70,12 +70,18 @@ Live cases ran in headless Chrome against the dev server with real keys
 | Recap with zero new tracks → calm all-familiar state | recap page branch + template fallback | ✅ |
 | Keyboard-only pass + Lighthouse a11y | deferred to Phase 6 deploy sweep | ⬜ |
 
-## Phase 4 — Save (planned)
+## Phase 4 — Save
 
-- `SPOTIFY_REFRESH_TOKEN`/`SPOTIFY_PLAYLIST_ID` missing → Save hidden, app fine
-- Save all twice → no duplicate tracks in the playlist
-- Expired/revoked refresh token → friendly error, core loop unaffected
-- Empty selection save → no-op, no API call
+| Case | How | Status |
+| --- | --- | --- |
+| Token env missing → `/api/save` 503 friendly; recap hides Save | `tests/playlist.test.ts` + live curl | ✅ |
+| Save dedupes against tracks already in the playlist | `tests/playlist.test.ts` | ✅ |
+| Save all twice → second save adds nothing | `tests/playlist.test.ts` | ✅ |
+| Large playlist → pagination walked before dedupe | `tests/playlist.test.ts` | ✅ |
+| Empty selection → no-op, zero network calls | `tests/playlist.test.ts` | ✅ |
+| Expired/revoked refresh token → friendly error, core loop fine | `tests/playlist.test.ts` | ✅ |
+| Network failure mid-add → friendly error | `tests/playlist.test.ts` | ✅ |
+| Live: Save all → real playlist updates, "Open the playlist" works | manual (needs owner token, see README) | ⬜ |
 
 ## Phase 5 — Flow button & presets (planned)
 
