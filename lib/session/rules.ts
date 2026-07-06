@@ -18,8 +18,9 @@ const NOVELTY_FRACTION = [0, 0.12, 0.2, 0.28] as const;
 
 /**
  * How many new tracks to dose. Applies the skip-learning nudge, the
- * cold-start rule (few seeds → one level gentler), the very-short-session
- * rule (little/no runway → little/no novelty), and the placement cap.
+ * cold-start rule (NO seeds → one level gentler; a single named artist is
+ * already a solid taste signal), the very-short-session rule (little/no
+ * runway → little/no novelty), and the placement cap.
  */
 export function noveltyCountFor(opts: {
   trackCount: number;
@@ -30,7 +31,7 @@ export function noveltyCountFor(opts: {
   const { trackCount, adventure, noveltyNudge, seedCount } = opts;
   if (trackCount <= 4) return 0;
 
-  const coldStartPenalty = seedCount < 2 ? 1 : 0;
+  const coldStartPenalty = seedCount === 0 ? 1 : 0;
   const level = Math.min(
     3,
     Math.max(0, Math.round(adventure + noveltyNudge - coldStartPenalty)),

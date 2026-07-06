@@ -106,6 +106,34 @@ export async function generateSession(
     add(filler);
   }
 
+  // Variety guard: the seeds define the sound, not the tracklist. Cap any
+  // single artist at ~a third of the session (the LLM is told this too, but
+  // it can't count) and refill from spares by other artists.
+  const maxPerArtist = Math.max(2, Math.ceil(trackCount / 3));
+  const primaryArtist = (t: SessionTrack) => t.artist.split(",")[0].trim().toLowerCase();
+  const artistCounts = new Map<string, number>();
+  for (let i = 0; i < tracks.length; ) {
+    const artist = primaryArtist(tracks[i]);
+    const count = artistCounts.get(artist) ?? 0;
+    if (count >= maxPerArtist) {
+      tracks.splice(i, 1);
+    } else {
+      artistCounts.set(artist, count + 1);
+      i++;
+    }
+  }
+  while (tracks.length < trackCount) {
+    // Prefer familiar spares — new-flagged ones are reserved for the novelty
+    // top-up below.
+    const spare = (await nextSpare(false)) ?? (await nextSpare(true));
+    if (!spare) break;
+    const artist = primaryArtist(spare);
+    if ((artistCounts.get(artist) ?? 0) >= maxPerArtist) continue;
+    artistCounts.set(artist, (artistCounts.get(artist) ?? 0) + 1);
+    seenIds.add(spare.id);
+    tracks.push(spare);
+  }
+
   // Enforce the novelty dose: swap excess discoveries for familiar spares
   // (or drop them), and never exceed what non-adjacent placement allows.
   const newTracks = tracks.filter((t) => t.isNew);

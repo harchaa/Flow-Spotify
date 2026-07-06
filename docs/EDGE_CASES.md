@@ -123,3 +123,5 @@ Live cases ran in headless Chrome against real APIs (16/16).
 | Extension failure/rate limit → silent retry on next advance, never crashes | `maybeExtend` catch path | ✅ |
 | Tap a track → plays immediately + full-screen Now Playing (art, prev/next) | headless Chrome e2e | ✅ |
 | Overlay close returns to list; Esc works; player stays mounted (audio uninterrupted) | headless Chrome e2e | ✅ |
+| Single seed artist → similar-artist blend, not one-artist loop (≤⅓ per artist, code-enforced) | prompt + variety guard, live-verified | ✅ |
+| Single seed no longer triggers the cold-start novelty penalty (0 seeds only) | `tests/session-rules.test.ts` + live | ✅ |

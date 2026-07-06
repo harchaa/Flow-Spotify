@@ -192,6 +192,41 @@ describe("generateSession", () => {
     expect(names).toEqual(expect.arrayContaining(["SpareNew1", "SpareNew2"]));
   });
 
+  it("caps any single artist at ~a third of the session, refilling from spares", async () => {
+    // 8 of 10 tracks by the same artist; spares from other artists exist.
+    const monotone = Array.from({ length: 8 }, (_, i) => ({
+      title: `Same${i + 1}`,
+      artist: "One Artist",
+      is_new: false,
+      reason: "fits",
+    }));
+    const spares = Array.from({ length: 6 }, (_, i) => ({
+      title: `Other${i + 1}`,
+      artist: `Different Artist ${i + 1}`,
+      is_new: false,
+      reason: "fits",
+    }));
+    groqMock.mockResolvedValueOnce(
+      llmSession([...monotone, llmTrack("New1", true), llmTrack("New2", true)], spares),
+    );
+    searchMock.mockImplementation(async (title, artist) => ({
+      id: `id-${title}`,
+      name: title,
+      artist,
+      albumArt: null,
+      spotifyUrl: `https://open.spotify.com/track/${title}`,
+    }));
+
+    const session = await generateSession(preset, { state: "A" });
+    const perArtist = new Map<string, number>();
+    for (const t of session.tracks) {
+      const a = t.artist.split(",")[0];
+      perArtist.set(a, (perArtist.get(a) ?? 0) + 1);
+    }
+    expect(Math.max(...perArtist.values())).toBeLessThanOrEqual(4); // ceil(10/3)
+    expect(session.tracks.length).toBeGreaterThanOrEqual(9);
+  });
+
   it("adventure 0 → a session with zero discoveries", async () => {
     groqMock.mockResolvedValueOnce(llmSession(tenTracks([])));
     resolveAll();

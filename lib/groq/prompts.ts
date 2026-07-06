@@ -27,7 +27,8 @@ Respond with ONLY a JSON object in this exact shape:
 
 Rules:
 - Every track must be a REAL, findable-on-Spotify track. Prefer well-known catalog over obscure remixes so search can resolve them. Never invent titles.
-- "is_new": false = squarely in the listener's stated taste (their seed artists or very close). true = a DISCOVERY: an artist outside their seeds, but sonically so close it will not break focus.
+- "is_new": false = FAMILIAR territory: well-known tracks by the seed artists, or POPULAR tracks by closely similar artists that a fan of the seeds almost certainly knows already. true = a DISCOVERY: a track or artist outside that familiar circle, but sonically so close it will not break focus. Discoveries must still be real, well-catalogued Spotify tracks — prefer a moderately popular track by a less-famous artist over an obscure deep cut.
+- Variety within consistency: the seeds define the SOUND, not the tracklist. No more than a third of the session by any single artist (seeds included) — blend seed tracks with similar artists in the same sound-world.
 - Exactly the requested number of tracks marked is_new=true in "tracks". Discoveries must be sonically indistinguishable in energy/mood from the rest.
 - "reason": one short line (max 12 words) explaining why the track fits this session. For discoveries, mention the taste link (e.g. "Close to Tycho's mellow pulse").
 - "backfill": extra alternates in the same vibe used to replace tracks that can't be found. Same consistency bar. Include at least 2 with is_new=true and the rest is_new=false.
@@ -37,7 +38,7 @@ Rules:
     `Build a ${trackCount}-track focus session, plus ${backfillCount} backfill alternates.`,
     `Preset: "${preset.name}" (${preset.kind.toLowerCase()} session).`,
     seeds.length > 0
-      ? `The listener focuses to: ${seeds.join(", ")}. Anchor the sound to these.`
+      ? `The listener focuses to: ${seeds.join(", ")}. Anchor the SOUND to these — mix their well-known tracks with popular tracks from closely similar artists, don't just play the seeds on repeat.`
       : `The listener has not named artists yet (cold start): open with safe, widely loved tracks that fit the vibe, and keep any discoveries extra familiar-sounding.`,
     `Energy: ${energyWord}, held steady for the whole session.`,
     preset.instrumentalOnly

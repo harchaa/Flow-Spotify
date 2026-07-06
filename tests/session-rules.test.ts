@@ -61,10 +61,12 @@ describe("noveltyCountFor (adventure dosing)", () => {
     expect(nudged).toBe(0);
   });
 
-  it("cold start (fewer than 2 seeds) is one level gentler", () => {
+  it("cold start (zero seeds) is one level gentler; one seed is full signal", () => {
     const warm = noveltyCountFor({ ...base, adventure: 2 });
-    const cold = noveltyCountFor({ ...base, adventure: 2, seedCount: 1 });
+    const cold = noveltyCountFor({ ...base, adventure: 2, seedCount: 0 });
+    const oneSeed = noveltyCountFor({ ...base, adventure: 2, seedCount: 1 });
     expect(cold).toBeLessThan(warm);
+    expect(oneSeed).toBe(warm);
   });
 
   it("never exceeds what non-adjacent placement allows", () => {
