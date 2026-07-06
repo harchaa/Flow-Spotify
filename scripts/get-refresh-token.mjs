@@ -4,8 +4,8 @@
  *
  * What it does:
  *   1. Runs the Spotify Authorization Code flow as YOU (the playlist owner)
- *      with scope playlist-modify-public, redirect http://127.0.0.1:8080
- *      (add that exact URI in the Spotify developer dashboard).
+ *      with scopes playlist-modify-public + playlist-read-private, redirect
+ *      http://127.0.0.1:8080 (add that exact URI in the developer dashboard).
  *   2. Finds or creates the public playlist "Flow Discoveries".
  *   3. Prints SPOTIFY_REFRESH_TOKEN and SPOTIFY_PLAYLIST_ID to paste into
  *      .env.local (and your host's env when deploying).
@@ -50,7 +50,9 @@ const authorizeUrl =
     client_id: clientId,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
-    scope: "playlist-modify-public",
+    // modify-public: add tracks at runtime; read-private: list your playlists
+    // so re-running finds the existing "Flow Discoveries" instead of duplicating.
+    scope: "playlist-modify-public playlist-read-private",
   });
 
 async function exchangeCode(code) {
